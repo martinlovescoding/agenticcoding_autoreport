@@ -31,7 +31,7 @@ report, because the reader cannot tell whether the drop was a bug or a policy.
 ### AC1 — One command, one file
 
 - **Given** a raw CRM export CSV,
-- **When** I run `uv run python -m agenticoding report --input data/raw_activities.csv --out report.html`,
+- **When** I run `uv run python -m agenticcoding report --input data/raw_activities.csv --out report.html`,
 - **Then** `report.html` is written and opens correctly with no network connection.
 
 *Rationale: the report gets emailed to people behind a corporate proxy. A report that
@@ -81,14 +81,17 @@ read by a screen reader.*
 *Rationale: imputing a mean would make the report look tidier and be wrong. The number
 of scored rows is itself a finding.*
 
-### AC6 — One palette, validated, in both themes
+### AC6 — One palette, validated, in every theme the page declares
 
 - **Given** the seven canonical channels,
 - **Then** each has a fixed colour that is identical in every chart, and the palette
-  passes the colour-vision-deficiency and contrast checks in light **and** dark mode.
+  passes the colour-vision-deficiency and contrast checks in every theme the page
+  paints — which for the shipped report is one, and for the starter design is three.
 
 *Rationale: colour must follow the entity, not its rank — a channel must not change
-colour because it moved from rank 3 to rank 4 between months.*
+colour because it moved from rank 3 to rank 4 between months. And the checks have to
+be *computed*: a theme the page declares but never validates is a theme somebody
+reads and cannot read.*
 
 ### AC7 — The design is a drop-in
 
@@ -111,8 +114,8 @@ colour because it moved from rank 3 to rank 4 between months.*
 ## Definition of done
 
 1. `uv run pytest -q` is green.
-2. `report.html` renders from a freshly generated 200-row CSV and is correct in light
-   and dark mode, at phone width, and by keyboard alone.
-3. The palette has been validated by script, not by eye, in both modes.
+2. `report.html` renders from a freshly generated 200-row CSV and is correct in every
+   theme it declares, at phone width, and by keyboard alone.
+3. The palette has been validated by script, not by eye, in every declared theme.
 4. The report has been opened and looked at — the validator checks colour, not layout.
 5. Everything is pushed to the repository.

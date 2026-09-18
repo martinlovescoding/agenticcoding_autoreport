@@ -43,9 +43,11 @@ are built as inline SVG by hand.
 
 ## What the page contains
 
-A masthead (period, source file, generated date), a KPI strip, a **data basis** panel that
-accounts for every row the pipeline dropped, then three analyses — each with a takeaway
-sentence, a chart, and a table twin:
+The page is in **German**; the command line stays English, because the report is the
+product and the CLI is the tool. A masthead (period, source file, generated date), a hero
+carrying the monthly total as a line and the four headline figures, then three analyses —
+each with a takeaway sentence, a chart, and a table twin — and a **data basis** panel that
+accounts for every row the pipeline dropped:
 
 | Analysis | Chart |
 |---|---|
@@ -94,27 +96,37 @@ refuses to build.
 template defines the slots:
 
 ```
---bg  --card  --tile            /* the page, a chart card, a grey tile */
---band-bg  --band-fg  --band-muted
+--bg  --card  --stone  --stone-light    /* the page, a card, the stone band */
 --text-primary  --text-secondary  --text-muted
 --grid  --axis  --accent  --tip-bg  --tip-fg
---kpi-a … --kpi-c
+--green  --green-deep  --panel-fg  --panel-muted   /* the dark green ground */
 --ch-1 … --ch-7          /* the seven channels, in schema order */
---seq-1 … --seq-5        /* magnitude, one hue light→dark, plus a -ink per step */
+--seq-1 … --seq-7        /* magnitude, one hue light→dark, plus a -ink per step */
 ```
 
 Colour follows the **entity, not the rank**: `ch-4` is Rep Email wherever it ranks. Text
 never wears a series colour — a label's fill is only ever an `-ink` token, chosen for
-readability on the surface behind it. Every text token is picked to clear 4.5:1 on every
-surface it can land on, in both themes, which is why the ink is not simply inherited from
-the design's palette.
+readability on the surface behind it.
 
-Three theme states have to resolve, not two: the bare `:root` block is the complete light
-palette, because an unstamped document is what most viewers see; the dark palette is
-re-declared under `@media (prefers-color-scheme: dark)` guarded as
-`:root:not([data-theme="light"])`, and again under `:root[data-theme="dark"]`, so an
-explicit choice beats the system in either direction. The inverted KPI band re-points the
-text tokens at its own ink, so one set of rules styles it in both themes.
+**Every text token clears 4.5:1 on every surface it can land on**, and it is *computed*:
+`test_every_text_token_is_readable_on_every_surface_the_design_declares` reads the tokens
+out of the template's own CSS and multiplies them. That check is why `--text-muted` is
+`#616161` rather than the delivered design's `#6b6b6b` — the design's muted grey reaches
+only 4.16:1 on its own stone band. The token moved; the band stayed where the design put
+it. The dark green panel carries its own ink for the same reason: white on it is 14.16:1,
+and the page's `--text-primary` on it is 1.2:1.
+
+**Two theme states, deliberately.** The report is light-only, as the delivered design is.
+A committed single-theme design may skip the dark blocks — but it must still paint its
+ground and every colour explicitly, which this one does, and it must not *promise* a theme
+it cannot paint. So `report.document` reads the rendered page back and sets `color-scheme`
+from what it finds: a page with no dark scope says `light`, not `light dark`, because the
+latter hands the reader a dark scrollbar and dark form controls over a light page. The
+rule is tested across both templates, so the starter — which *is* theme-aware — keeps its
+three states and the report keeps its one.
+
+The `.panel` rule re-points the text tokens at the panel's own ink, so every header, hero
+and footer element is readable by default rather than only if its author remembered.
 
 **Safety net.** `tests/test_template_slots.py` compares the slots in the template against
 the keys `report.py` supplies, in both directions, and re-derives the palette from the
@@ -122,9 +134,11 @@ template's own CSS to check every heatmap value against the cell under it. A ren
 or an unreadable ink fails a test instead of rendering a hole.
 
 **Starting a new design.** `templates/design-template.html` is a complete, restyleable
-starter — all 24 slots, every palette token, all three theme scopes — and the suite holds
-it to *the same* contract as the live design, so it cannot rot. Render it with the real
-data to see what it looks like:
+starter — every slot, every palette token, all three theme scopes — and the suite holds it
+to *the same* contract as the live design, so it cannot rot. It carries one design
+deliberately: the canonical three-state theme pattern, which the live design does not use
+and which a new design is likely to want. Render it with the real data to see what it
+looks like:
 
 ```python
 report.document(slots, report.load_template("design-template.html"))
@@ -139,7 +153,7 @@ report.document(slots, report.load_template("design-template.html"))
 uv run pytest
 ```
 
-328 tests. Beyond the pipeline and the charts, five of them open the rendered page in a
+368 tests. Beyond the pipeline and the charts, five of them open the rendered page in a
 real browser and measure it — at 400px and at 1280px. A page that scrolls sideways, or a
 chart whose type shrinks to an unreadable size when it is scaled to a phone, is a layout
 bug no unit test can see: the page measures the chart's rendered width against its
@@ -158,23 +172,38 @@ at all.
 
 ## Known limitations
 
-- **Three of the seven channel colours sit below 3:1 contrast** against the light surface
-  (aqua, yellow, magenta). This is deliberate and permitted: the relief is visible — direct
-  labels on every bar and a table twin under every chart, so no value is encoded by colour
-  alone. Under the validator's strictest setting (`--pairs all`, every hue against every
-  other rather than against its neighbours) the seven-hue set does not pass; the report
-  therefore never relies on telling two distant channels apart by colour.
-- The magnitude ramp is a five-step approximation of the engagement range, not a
-  continuous scale. Cells within one step are not distinguishable by shade.
+- **The channel palette is the brand's, not the validator's, and it fails three of its
+  checks.** `#08312a` and `#b6cdbf` sit outside the lightness band; `#08312a`, `#6b8375`
+  and `#b6cdbf` fall under the chroma floor — they read as grey; and `#00b862`, `#b6cdbf`
+  and `#e0a100` are below 3:1 against the surface. The CVD and normal-vision separation
+  checks *pass*, so no two neighbours are confusable. This is a documented deviation rather
+  than an oversight: a contrast warning obliges relief, and the relief is present and
+  computed — every bar carries its value as text, every chart has a table twin, and the
+  legend swatches carry the names. Under the validator's strictest setting (`--pairs all`,
+  every hue against every other rather than against its neighbours) the set does not pass;
+  the report therefore never relies on telling two distant channels apart by colour.
+- The magnitude ramp is a seven-step approximation of the engagement range, not a
+  continuous scale. Cells within one step are not distinguishable by shade — the
+  **two palest steps are 4.5 ΔE apart**, so they separate only when they sit next to each
+  other. The delivered design's own ramp is eleven greens; this one omits `#4a8466`, the
+  single step where neither white (4.39:1) nor near-black (4.48:1) reaches 4.5:1 — the
+  design sets white text there. `test_every_step_of_the_ramp_is_readable_on_its_own_cell`
+  fails the delivered ramp as-is.
+- The palest ramp step is 1.15:1 against the card it sits on. It reads as a cell only in
+  the company of the darker steps; a heatmap whose lowest value is *also* its only value
+  would be a nearly blank cell.
 - **On a phone the charts scroll inside their own card.** Scaled to a 400px screen the
   charts' 11px axis numbers rendered at 4.8px, so below 640px a chart keeps a 620px floor
   and its card scrolls instead — legible type, but the longest bar's value label sits off
   the right edge until you scroll. The page body itself never scrolls sideways, and the
   table twin under each chart has every number in it without any scrolling at all.
-- **A chart is always drawn on the surface its palette was validated against**, so the
-  trend chart's card stays light inside the dark KPI band rather than inverting with it.
-  The band is a typographic device, not a theme: inverting the chart with it would put the
-  light-mode hues on a near-black ground, which is a combination no palette check covers.
+- **A chart is always drawn on the surface its palette was validated against.** The hero
+  chart sits in a white card lifted over the green panel rather than on the panel itself:
+  drawn on the green ground it would paint its labels in `--text-secondary` and its line in
+  `--seq-6`, and both are dark on dark.
+- **The delivered design's wordmark and logo are replaced by a neutral title block.** A
+  generated report should not present itself as a document issued by a company it has no
+  relationship with.
 - `03/04/2026` is read as 3 April. The convention is documented here rather than inferred
   per file; an export that means 4 March must be converted before it reaches this tool.
 - The page is a snapshot. Filters, drill-down and cross-chart selection are out of scope.

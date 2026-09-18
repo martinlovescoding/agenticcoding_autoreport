@@ -33,6 +33,7 @@ TEMPLATES = ("report.html", "design-template.html")
 def fragments() -> tuple[str, ...]:
     """Every chart the report renders, as emitted."""
     return (
+        charts.hero_trend(metrics.monthly_trend(SAMPLE)),
         charts.channel_bars(metrics.channel_mix(SAMPLE)),
         charts.monthly_columns(metrics.monthly_trend(SAMPLE)),
         charts.specialty_heatmap(metrics.specialty_matrix(SAMPLE)),
@@ -77,12 +78,20 @@ def _scopes(template: str) -> dict[str, dict[str, str]]:
 
 
 def palette(template: str, mode: str) -> dict[str, str]:
-    """Every token's hex in one theme, dark layered over light as the cascade does."""
+    """Every token's hex in one theme, dark layered over light as the cascade does.
+
+    A committed single-theme design declares no dark scope at all, and every one of
+    these tests then reads the light palette — because that is the palette such a page
+    actually paints, in every viewer setting. Demanding a dark scope here would be
+    these tests pinning a design decision, which `AGENTS.md` forbids: what the contract
+    requires is that whichever themes the page *declares* are complete and readable,
+    not that it declares two.
+    """
     scopes = _scopes(template)
     if mode == "light":
         return scopes[LIGHT_SCOPE]
     return {**scopes[LIGHT_SCOPE], **{key: value for scope in DARK_SCOPES
-                                      for key, value in scopes[scope].items()}}
+                                      for key, value in scopes.get(scope, {}).items()}}
 
 
 def _luminance(colour: str) -> float:
@@ -181,9 +190,16 @@ def test_rendering_the_template_leaves_no_sigils(template, slots):
 
 
 def test_the_rendered_page_carries_the_charts(template, slots):
+    """Counted by the chart class rather than by `<svg>`.
+
+    A page may legitimately carry a decorative `<svg>` — an icon, a rule, the delivered
+    design's wave under its hero panel — and counting `<svg>` would make that a false
+    failure. What the contract promises is one chart element per analysis, plus the
+    hero, so that is what is counted.
+    """
     page = render.render(template, slots)
 
-    assert page.count("<svg") == 3, "one chart per analysis"
+    assert page.count('class="chart"') == 4, "the hero plus one chart per analysis"
 
 
 def test_the_rendered_page_carries_a_table_per_analysis(template, slots):
@@ -216,11 +232,24 @@ def test_the_template_styles_every_class_the_charts_emit(template, slots):
     assert not unstyled, f"charts emit classes the template never styles: {sorted(unstyled)}"
 
 
-def test_both_dark_scopes_declare_the_same_tokens(template):
-    """A token the media query moves but the stamp does not leaves the toggle half-lit."""
-    scopes = _scopes(template)
+def test_the_two_dark_scopes_agree_with_each_other(template):
+    """A token the media query moves but the stamp does not leaves the toggle half-lit.
 
-    assert scopes[DARK_SCOPES[0]] == scopes[DARK_SCOPES[1]]
+    Either the page declares both dark scopes or it declares neither. Declaring one is
+    the failure: the OS setting and the explicit toggle are the same theme, and a page
+    that answers only one of them renders two different designs depending on which
+    switch the reader touched. A single-theme design declares neither, and everything
+    else here reads it as light — which is what it is.
+    """
+    scopes = _scopes(template)
+    declared = [scopes.get(scope) for scope in DARK_SCOPES]
+
+    assert (declared[0] is None) == (declared[1] is None), (
+        f"only one dark scope is declared: {[scope for scope, body in
+                                           zip(DARK_SCOPES, declared) if body is not None]}"
+    )
+    if declared[0] is not None:
+        assert declared[0] == declared[1]
 
 
 @pytest.mark.parametrize("mode", ["light", "dark"])
@@ -272,6 +301,105 @@ def test_every_step_of_the_ramp_is_readable_on_its_own_cell(template, mode):
     ]
 
     assert not unreadable, f"{mode} mode ramp inks are unreadable on: {unreadable}"
+
+
+# The three inks every one of these pages writes body text with, and the names a design
+# may give its surfaces. A design declares the surfaces it actually paints; this checks
+# each text token against each of them, so a template only has to declare what it uses
+# and neither design's palette is imposed on the other.
+TEXT_TOKENS = ("text-primary", "text-secondary", "text-muted")
+GROUND_TOKENS = ("bg", "card", "tile", "stone", "stone-light")
+
+# The `report.html` design's own pairs — everything the templated markup actually puts
+# together, including its two special surfaces: the row of tints a design may put behind
+# text (`--stone`), and the dark green ground, which carries ink the page's own text
+# tokens cannot read on. This is not a style guide; it is the list of pairs that exist
+# in the page, so a pair can only be added here by adding it to the page.
+PANEL_INK_ON_GROUND = (
+    ("panel-fg", "green"),
+    ("panel-fg", "green-deep"),
+    ("panel-muted", "green"),
+    ("panel-muted", "green-deep"),
+    ("accent", "green"),
+    ("accent", "green-deep"),
+    ("green-deep", "accent"),
+    ("tip-fg", "tip-bg"),
+)
+
+
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_every_text_token_is_readable_on_every_surface_the_design_declares(template, mode):
+    """Computed, because the README asserted it and nothing checked it.
+
+    It was not true. The delivered design's `--text-muted #6b6b6b` on `--stone #e5e3de`
+    is 4.16:1 — a caption on the stone band was under the floor on every page the design
+    produced, and no unit test could see it because no test multiplied the two tokens
+    together. The fix belonged to the palette, not to the layout: the token moved to
+    #616161 and the band stayed where the design put it.
+    """
+    tokens = palette(template, mode)
+    grounds = [name for name in GROUND_TOKENS if name in tokens]
+
+    assert "bg" in grounds and "card" in grounds, "a page that paints no ground at all"
+
+    unreadable = [
+        (ink, ground, round(contrast(tokens[ink], tokens[ground]), 2))
+        for ink in TEXT_TOKENS
+        for ground in grounds
+        if contrast(tokens[ink], tokens[ground]) < 4.5
+    ]
+
+    assert not unreadable, f"{mode} mode paints text below 4.5:1 on: {unreadable}"
+
+
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_the_panel_ink_and_the_tooltip_are_readable_on_their_own_grounds(mode):
+    """The report's non-page surfaces: the green panel, its button, and the tooltip.
+
+    These are checked against `report.html` alone. They are that design's surfaces, not
+    a rule for every design — the starter page declares no green ground at all, and
+    demanding one of it would be this suite pinning one design's palette, which is the
+    thing the handoff contract exists to prevent.
+    """
+    tokens = palette(report.load_template(), mode)
+
+    unreadable = [
+        (ink, ground, round(contrast(tokens[ink], tokens[ground]), 2))
+        for ink, ground in PANEL_INK_ON_GROUND
+        if contrast(tokens[ink], tokens[ground]) < 4.5
+    ]
+
+    assert not unreadable, f"{mode} mode paints text below 4.5:1 on: {unreadable}"
+
+
+def test_where_the_accent_is_used_as_text_it_can_be_read(template):
+    """An accent is usually a fill or a mark, and a *text* colour only by accident.
+
+    The report's accent is a lime: 8.35:1 on the green panel and 1.70:1 on white. Used
+    as link text on the page's own ground it would be invisible, and the failure is
+    silent — the page renders, the text is in the DOM, and nobody can read it. Such a
+    design must therefore scope every rule that paints text with the accent to a green
+    ground, which is the class `.panel` the header, the hero and the footer all carry.
+
+    A design whose accent *is* readable as body text — the starter's dark blue is
+    ~7:1 — is free to use it unscoped. The rule is readability, not the selector, so
+    this passes either way and only fails the pairing that is actually unreadable.
+    """
+    css = template.split("<style>", 1)[1].split("</style>", 1)[0]
+    tokens = palette(template, "light")
+    on_the_page = contrast(tokens["accent"], tokens["bg"]) >= 4.5
+
+    unscoped = [
+        selector
+        for selector, body in _blocks(css)
+        if re.search(r"(?:^|;)\s*color:\s*var\(--accent\)", body)
+        and not re.search(r"(?:^|[\s,>])\.panel(?:[\s,>.:{]|$)", selector)
+    ]
+
+    assert on_the_page or not unscoped, (
+        f"--accent is {round(contrast(tokens['accent'], tokens['bg']), 2)}:1 on --bg, "
+        f"so these rules would paint unreadable text: {unscoped}"
+    )
 
 
 def test_the_page_shell_is_reachable_without_the_installed_package(monkeypatch):

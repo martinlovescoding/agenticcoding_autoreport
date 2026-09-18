@@ -6,7 +6,7 @@
   over `report.html`, or point `report.load_template()` at it, then restyle.
 
   It is deliberately plain — a design you would read, not one you would present. Its
-  job is to be complete: it carries all 24 slots, all the palette tokens, the chart
+  job is to be complete: it carries every slot, all the palette tokens, the chart
   classes, the theme scopes and the layout rules, so that everything the contract
   requires is already in front of you when you start.
 
@@ -31,7 +31,12 @@
     --text-primary --text-secondary --text-muted
     --grid --axis --accent --tip-bg --tip-fg
     --ch-1 … --ch-7             identity, one per channel, in schema order
-    --seq-1 … --seq-5           magnitude, one hue light→dark, plus a -ink per step
+    --seq-1 … --seq-7           magnitude, one hue light→dark, plus a -ink per step
+
+  Two chart elements exist in this file that the starter's own design does not use:
+  `.chart .line`, `.chart .area` and `.chart .point`, which the hero's monthly-total
+  line is drawn from. They are here because the hero is a slot like any other — a
+  design that drops them breaks its own `{{{HERO_CHART}}}`.
 -->
 
 <title>Multichannel Engagement</title><style>
@@ -77,10 +82,12 @@
        carries the ink its own cell needs, so a shade and its text are one row a
        reader can check rather than a rule inferred from depth. */
     --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
-    --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
-    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-    --seq-4: #256abf;  --seq-4-ink: #ffffff;
-    --seq-5: #104281;  --seq-5-ink: #ffffff;
+    --seq-2: #a9cdf5;  --seq-2-ink: #0d1117;
+    --seq-3: #7fb2ee;  --seq-3-ink: #0d1117;
+    --seq-4: #4f92e2;  --seq-4-ink: #0d1117;
+    --seq-5: #2a6fc9;  --seq-5-ink: #ffffff;
+    --seq-6: #1a519f;  --seq-6-ink: #ffffff;
+    --seq-7: #0f376f;  --seq-7-ink: #ffffff;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -108,13 +115,16 @@
       --ch-7: #9085e9;
 
       /* The ramp runs the other way here: the deepest value is the lightest cell,
-         and the lowest step has to clear the surface to read as a cell at all.
-         Ink is re-paired to match. */
-      --seq-1: #256abf;  --seq-1-ink: #ffffff;
-      --seq-2: #3987e5;  --seq-2-ink: #0d1117;
-      --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-      --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+         and the lowest step has to clear the surface to read as a cell at all — so
+         it starts at the light theme's fifth step rather than at its first, which
+         against this ground would be a cell nobody can see. Ink is re-paired. */
+      --seq-1: #2a6fc9;  --seq-1-ink: #ffffff;
+      --seq-2: #4f92e2;  --seq-2-ink: #0d1117;
+      --seq-3: #7fb2ee;  --seq-3-ink: #0d1117;
+      --seq-4: #a9cdf5;  --seq-4-ink: #0d1117;
       --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+      --seq-6: #e0eefc;  --seq-6-ink: #0d1117;
+      --seq-7: #f0f7fe;  --seq-7-ink: #0d1117;
     }
   }
 
@@ -142,11 +152,13 @@
     --ch-6: #0a9c0a;
     --ch-7: #9085e9;
 
-    --seq-1: #256abf;  --seq-1-ink: #ffffff;
-    --seq-2: #3987e5;  --seq-2-ink: #0d1117;
-    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-    --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+    --seq-1: #2a6fc9;  --seq-1-ink: #ffffff;
+    --seq-2: #4f92e2;  --seq-2-ink: #0d1117;
+    --seq-3: #7fb2ee;  --seq-3-ink: #0d1117;
+    --seq-4: #a9cdf5;  --seq-4-ink: #0d1117;
     --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+    --seq-6: #e0eefc;  --seq-6-ink: #0d1117;
+    --seq-7: #f0f7fe;  --seq-7-ink: #0d1117;
   }
 
   /* --- base ----------------------------------------------------------------- */
@@ -222,6 +234,14 @@
   /* An absent combination is drawn, not left blank: a blank is indistinguishable
      from a rendering bug, and from a zero. */
   .chart .cell-empty { fill: none; stroke: var(--axis); stroke-dasharray: 3 3; }
+
+  /* The hero's monthly-total line. Both shapes are chrome — they encode no value a
+     labelled point does not also carry — so they are styled by class, and the points
+     take the ramp slot. The surface-coloured ring keeps two adjacent months from
+     merging into one mark. */
+  .chart .line { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .area { opacity: .5; }
+  .chart .point { stroke: var(--card); stroke-width: 2; }
 
   .legend {
     list-style: none;
@@ -299,82 +319,86 @@
 
 <div class="doc">
   <header>
-    <h1>Multichannel engagement report</h1>
+    <h1>Multichannel-Engagement-Report</h1>
     <p class="period">{{PERIOD_LABEL}}</p>
     <p class="lede">{{HERO_TAGLINE}}</p>
   </header>
 
-  <section aria-label="Headline figures">
+  <section aria-label="Interaktionen je Monat">
+    <div class="card"><div class="scroller">{{{HERO_CHART}}}</div></div>
+  </section>
+
+  <section aria-label="Kennzahlen">
     <div class="kpis">
       <div class="kpi">
         <b>{{KPI_INTERACTIONS}}</b>
-        <small>Interactions</small>
+        <small>Interaktionen</small>
         <span>{{KPI_INTERACTIONS_NOTE}}</span>
       </div>
       <div class="kpi">
         <b>{{KPI_HCPS}}</b>
-        <small>HCPs reached</small>
+        <small>Erreichte HCPs</small>
         <span>{{KPI_HCPS_NOTE}}</span>
       </div>
       <div class="kpi">
         <b>{{KPI_AVG_ENGAGEMENT}}</b>
-        <small>Mean engagement</small>
+        <small>Ø Engagement</small>
         <span>Score 0–100</span>
       </div>
       <div class="kpi">
         <b>{{KPI_EMAIL_OPEN_RATE}}</b>
-        <small>Email open rate</small>
+        <small>Öffnungsrate E-Mail</small>
         <span>{{KPI_EMAIL_OPEN_RATE_NOTE}}</span>
       </div>
     </div>
   </section>
 
   <section id="channels" aria-labelledby="channels-h">
-    <h2 id="channels-h">Channel mix</h2>
-    <p class="caption">Volume per channel, and how well each one landed.</p>
+    <h2 id="channels-h">Kanal-Mix</h2>
+    <p class="caption">Volumen je Kanal — und wie gut jeder einzelne angekommen ist.</p>
     <div class="card"><div class="scroller">{{{CHANNEL_CHART}}}</div></div>
     <p class="takeaway">{{{CHANNEL_TAKEAWAY}}}</p>
     <details>
-      <summary>Table view — volume, share, reach and mean engagement</summary>
+      <summary>Tabellenansicht — Volumen, Anteil, Reichweite und Ø Engagement</summary>
       <div class="scroller">{{{CHANNEL_TABLE}}}</div>
     </details>
   </section>
 
   <section id="trend" aria-labelledby="trend-h">
-    <h2 id="trend-h">Monthly trend</h2>
-    <p class="caption">The same volume, one stack per month.</p>
+    <h2 id="trend-h">Verlauf</h2>
+    <p class="caption">Dasselbe Volumen, ein Stapel je Monat.</p>
     <div class="card">
       {{{TREND_LEGEND}}}
       <div class="scroller">{{{TREND_CHART}}}</div>
     </div>
     <p class="takeaway">{{{TREND_TAKEAWAY}}}</p>
     <details>
-      <summary>Table view — interactions per month, by channel</summary>
+      <summary>Tabellenansicht — Interaktionen je Monat, nach Kanal</summary>
       <div class="scroller">{{{TREND_TABLE}}}</div>
     </details>
   </section>
 
   <section id="specialties" aria-labelledby="specialties-h">
-    <h2 id="specialties-h">By specialty</h2>
-    <p class="caption">Mean engagement per specialty and channel.</p>
+    <h2 id="specialties-h">Nach Fachrichtung</h2>
+    <p class="caption">Ø Engagement je Fachrichtung und Kanal.</p>
     <div class="card"><div class="scroller">{{{SPECIALTY_CHART}}}</div></div>
     <p class="takeaway">{{{SPECIALTY_TAKEAWAY}}}</p>
     <details>
-      <summary>Table view — mean engagement per specialty and channel</summary>
+      <summary>Tabellenansicht — Ø Engagement je Fachrichtung und Kanal</summary>
       <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
     </details>
   </section>
 
   <section id="data" aria-labelledby="data-h">
-    <h2 id="data-h">Data basis</h2>
+    <h2 id="data-h">Datenbasis</h2>
     <p class="caption">{{QUALITY_HEADLINE}}</p>
     <div class="scroller">{{{QUALITY_TABLE}}}</div>
     <p class="takeaway">{{MISSING_SCORE_NOTE}}</p>
   </section>
 
   <footer>
-    Generated from {{SOURCE_FILE}} on {{GENERATED_AT}}. The page is self-contained: it
-    makes no network requests and can be read offline.
+    Generiert am {{GENERATED_AT}} aus {{SOURCE_FILE}}. Die Seite ist in sich geschlossen:
+    sie stellt keine Netzwerkanfragen und lässt sich offline lesen.
   </footer>
 </div>
 

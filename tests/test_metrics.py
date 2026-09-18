@@ -7,6 +7,7 @@ comment block above that fixture for the arithmetic.
 import pytest
 
 from agenticcoding import metrics
+from conftest import interaction
 
 # --- channel mix --------------------------------------------------------------
 
@@ -27,6 +28,27 @@ def test_channel_mix_averages_only_the_scored_rows(sample):
     assert by_channel["F2F Call"].avg_engagement == pytest.approx(70.0)
     assert by_channel["Rep Email"].avg_engagement == pytest.approx(30.0)
     assert by_channel["Web"].avg_engagement == pytest.approx(50.0), "I8 has no score"
+
+
+def test_channel_mix_averages_the_duration_ignoring_missing_ones(sample):
+    """`Web` has one row at 10 minutes and one with no duration at all.
+
+    The mean is 10.0, not 5.0 — the missing value is excluded, never treated as a
+    zero-length interaction. This is the same rule as the engagement score.
+    """
+    mix = metrics.channel_mix(sample)
+    by_channel = {stat.channel: stat for stat in mix.rows}
+
+    assert by_channel["Web"].avg_duration == pytest.approx(10.0)
+    assert by_channel["F2F Call"].avg_duration == pytest.approx(30.0)
+    assert by_channel["Rep Email"].avg_duration == pytest.approx(5.0)
+
+
+def test_channel_mix_duration_is_none_when_no_row_has_one():
+    """Email channels carry no duration, and the table shows an em dash for it."""
+    mix = metrics.channel_mix([interaction(channel="HQ Email", duration_min=None)])
+
+    assert mix.rows[0].avg_duration is None
 
 
 def test_channel_mix_counts_distinct_hcps(sample):
@@ -87,9 +109,11 @@ def test_monthly_trend_covers_every_month_present(sample):
 
 
 def test_monthly_trend_labels_are_three_letter_months(sample):
+    """The axis label is short; the table row beneath it is not."""
     trend = metrics.monthly_trend(sample)
 
-    assert [month.label for month in trend.months] == ["Mar", "Apr", "May"]
+    assert [month.label for month in trend.months] == ["Mär", "Apr", "Mai"]
+    assert [month.label_full for month in trend.months] == ["Mär 2026", "Apr 2026", "Mai 2026"]
 
 
 def test_monthly_trend_splits_each_month_by_channel(sample):
@@ -147,6 +171,22 @@ def test_specialty_matrix_rows_and_columns_follow_schema_order(sample):
 
     assert [row.specialty for row in matrix.rows] == ["Oncology", "Cardiology"]
     assert matrix.channels == ("F2F Call", "Rep Email", "Web")
+
+
+def test_specialty_matrix_rows_carry_the_german_label(sample):
+    """The key stays canonical; the label is what a reader sees."""
+    matrix = metrics.specialty_matrix(sample)
+
+    assert [row.label for row in matrix.rows] == ["Onkologie", "Kardiologie"]
+
+
+def test_specialty_matrix_keeps_an_unknown_specialty_under_its_own_name():
+    """The cleaner keeps an unrecognized specialty rather than dropping the row,
+    so the report has to be able to print one it has no translation for."""
+    matrix = metrics.specialty_matrix([interaction(specialty="Andrologie")])
+
+    assert [row.specialty for row in matrix.rows] == ["Andrologie"]
+    assert [row.label for row in matrix.rows] == ["Andrologie"]
 
 
 def test_specialty_matrix_reports_the_value_range_for_the_colour_scale(sample):

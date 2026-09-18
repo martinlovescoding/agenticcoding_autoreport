@@ -54,10 +54,7 @@ def _attr(value: object) -> str:
     if isinstance(value, bool):
         return "1" if value else "0"
     if isinstance(value, float):
-        text = f"{value:.2f}"
-        if "." in text:
-            text = text.rstrip("0").rstrip(".")
-        return text or "0"
+        return number(value)
     return str(value)
 
 
@@ -149,15 +146,30 @@ def _strip(text: str) -> str:
     return text or "0"
 
 
+def number(value: float, decimals: int | None = None) -> str:
+    """Format a number for **SVG geometry**, where the separator must stay a period.
+
+    `viewBox="0 0 720 236.5"` is valid; `0 0 720 236,5` is not, and a browser that
+    cannot parse a `viewBox` drops the entire chart rather than one label. Geometry
+    therefore never goes through `fmt` — this is the function for it, and `_attr`
+    is built on it so the trailing-zero rule lives in exactly one place.
+    """
+    return _strip(f"{value:.{decimals}f}" if decimals is not None else f"{value:.2f}")
+
+
 def fmt(value: float | None, decimals: int | None = None) -> str:
-    """Format a number for a label. `None` becomes an em dash.
+    """Format a number for a **label**, German-style. `None` becomes an em dash.
 
     With `decimals` unset, a value shows at most two decimals and only as many as it
-    needs: `70.0` → `70`, `0.5` → `0.5`, `1/3` → `0.33`.
+    needs: `70.0` → `70`, `0.5` → `0,5`, `1/3` → `0,33`.
+
+    The comma is swapped in *after* `number` has trimmed the trailing zeros: the
+    other order turns `70.00` into `70,00` and then trims it to `70,`, which is what
+    a reader would see on the page.
     """
     if value is None:
         return MISSING
-    return _strip(f"{value:.{decimals}f}" if decimals is not None else f"{value:.2f}")
+    return number(value, decimals).replace(".", ",")
 
 
 def share(value: float | None, decimals: int = 1) -> str:

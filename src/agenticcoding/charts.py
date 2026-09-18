@@ -45,7 +45,34 @@ GAP = 2.0
 
 # Magnitude ramp for the heatmap: one hue, light to dark. The categorical channel
 # slots are for identity and must not be reused here.
-SEQUENTIAL: tuple[str, ...] = ("seq-1", "seq-2", "seq-3", "seq-4", "seq-5")
+#
+# Seven steps rather than five, and the values in the template are not the delivered
+# design's eleven greens. Those were measured against the readability floor and one of
+# them — `#4a8466` — is a zone where *neither* white (4.39:1) nor near-black (4.48:1)
+# clears 4.5:1, yet the design sets white text on it. `test_every_step_of_the_ramp_is_
+# readable_on_its_own_cell` exists to catch exactly that, so the ramp spans the same
+# light→dark range across the steps that do have a readable ink.
+SEQUENTIAL: tuple[str, ...] = (
+    "seq-1", "seq-2", "seq-3", "seq-4", "seq-5", "seq-6", "seq-7",
+)
+
+# --- the hero -----------------------------------------------------------------
+
+# Shorter than the analysis charts on purpose: the hero is a glance at the shape of
+# the period, not a chart a reader measures values off.
+HERO_HEIGHT = 176.0
+# Room *inside* the viewBox for the point labels above the highest marker and the
+# month names below the baseline. A label outside the viewBox is clipped, not spilled.
+HERO_LABEL_BAND = 30.0
+HERO_AXIS_BAND = 26.0
+
+# --- the heatmap --------------------------------------------------------------
+
+# The row-label gutter. `Allgemeinmedizin` is the longest German specialty name and is
+# right-anchored, so it grows leftward from the gutter and needs this much room to the
+# left of it. The delivered design's 110 fit `General Medicine` and clips this one.
+HEATMAP_GUTTER = 150.0
+HEATMAP_LABEL_GAP = 12.0
 
 
 def channel_token(channel: str) -> str:
@@ -60,7 +87,7 @@ def channel_token(channel: str) -> str:
 def _svg(content: str, height: float) -> str:
     """Wrap a fragment in its root element. The template styles `.chart`."""
     return (
-        f'<svg class="chart" viewBox="0 0 {svgcore.fmt(WIDTH)} {svgcore.fmt(height)}" '
+        f'<svg class="chart" viewBox="0 0 {svgcore.number(WIDTH)} {svgcore.number(height)}" '
         f'role="img" preserveAspectRatio="xMidYMid meet">{content}</svg>'
     )
 
@@ -94,6 +121,94 @@ def trend_legend(trend: metrics.MonthlyTrend) -> str:
         for channel in trend.channels
     )
     return f'<ul class="legend">{items}</ul>'
+
+
+# --- 0. the hero: monthly totals as a line ------------------------------------
+
+
+def hero_trend(trend: metrics.MonthlyTrend) -> str:
+    """Monthly totals as a line, for the page's opening panel.
+
+    Three deliberate departures from the analysis charts:
+
+    * **It carries no axis and no gridlines.** The hero is read as a shape, and the
+      same totals are stacked by channel further down the page for anyone who wants
+      the numbers. Ticks here would be a second, coarser copy of that chart's axis.
+    * **Every point is labelled.** The dataviz rule is "never a number on every point",
+      which is written for a dense series; this is three to twelve months, the value
+      band has the room, and the delivered design labels every point too. The rule
+      exists to stop a thicket of numbers, and at this density there is no thicket.
+    * **One series, so no legend.** The panel's own heading names what is counted; a
+      legend for a single series restates the title.
+
+    The line and the area under it take a *magnitude* slot rather than a channel slot:
+    a total has no identity to encode, and borrowing `--ch-1` would read as F2F Call.
+    """
+    if not trend.months:
+        return ""
+
+    plot_bottom = HERO_HEIGHT - HERO_AXIS_BAND
+    ticks = svgcore.ticks(float(trend.max_total))
+    y_scale = svgcore.linear((0.0, ticks[-1]), (0.0, plot_bottom - HERO_LABEL_BAND))
+
+    band = WIDTH / len(trend.months)
+    centres = [(index + 0.5) * band for index in range(len(trend.months))]
+    points = [
+        (centre, plot_bottom - y_scale(month.total))
+        for centre, month in zip(centres, trend.months, strict=True)
+    ]
+
+    parts: list[str] = []
+
+    # A path of one point is not a line, and an area closed onto a single x is not an
+    # area. Both would render as nothing, so a one-month period skips them and the
+    # marker carries the chart.
+    if len(points) > 1:
+        line = " ".join(
+            f"{'M' if index == 0 else 'L'} {svgcore.number(x)} {svgcore.number(y)}"
+            for index, (x, y) in enumerate(points)
+        )
+        parts.append(
+            svgcore.element(
+                "path", cls="area", d=f"{line} L {svgcore.number(points[-1][0])} "
+                f"{svgcore.number(plot_bottom)} L {svgcore.number(points[0][0])} "
+                f"{svgcore.number(plot_bottom)} Z",
+                style=svgcore.paint("seq-2"),
+            )
+        )
+        parts.append(
+            svgcore.element(
+                "path", cls="line", d=line, fill="none",
+                style=svgcore.paint("seq-6", "stroke"),
+            )
+        )
+
+    for (x, y), month in zip(points, trend.months, strict=True):
+        parts.append(
+            svgcore.element(
+                "circle", cls="mark point", cx=x, cy=y, r=4.0,
+                style=svgcore.paint("seq-6"),
+                **{
+                    "data-tip": f"{month.label_full}: {month.total} Interaktionen",
+                    "data-month": month.month,
+                    "data-value": float(month.total),
+                },
+            )
+        )
+        parts.append(
+            svgcore.element(
+                "text", svgcore.fmt(month.total), cls="value",
+                x=x, y=y - 12, **{"text-anchor": "middle"},
+            )
+        )
+        parts.append(
+            svgcore.element(
+                "text", month.label, cls="label",
+                x=x, y=plot_bottom + 18, **{"text-anchor": "middle"},
+            )
+        )
+
+    return _svg("".join(parts), HERO_HEIGHT)
 
 
 # --- 1. channel mix: ranked horizontal bars -----------------------------------
@@ -254,7 +369,7 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
     if not matrix.rows or not matrix.channels:
         return ""
 
-    gutter = 110.0
+    gutter = HEATMAP_GUTTER
     cell_width = (WIDTH - gutter) / len(matrix.channels)
     cell_height = 34.0
     plot_bottom = PLOT_TOP + len(matrix.rows) * cell_height
@@ -268,8 +383,9 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
         y = PLOT_TOP + row_index * cell_height
         parts.append(
             svgcore.element(
-                "text", row.specialty, cls="label",
-                x=gutter - 12, y=y + cell_height / 2 + 4, **{"text-anchor": "end"},
+                "text", row.label, cls="label",
+                x=gutter - HEATMAP_LABEL_GAP, y=y + cell_height / 2 + 4,
+                **{"text-anchor": "end"},
             )
         )
         for column_index, channel in enumerate(matrix.channels):
@@ -279,9 +395,9 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
             if value is None:
                 parts.append(
                     svgcore.element(
-                        "rect", cls="cell cell-empty",
+                        "rect", cls="cell cell-empty", rx=4,
                         x=x + 1, y=y + 1, width=cell_width - 2, height=cell_height - 2,
-                        **{"data-tip": f"{row.specialty} × {channel}: no interactions"},
+                        **{"data-tip": f"{row.label} × {channel}: keine Interaktionen"},
                     )
                 )
                 continue
@@ -291,11 +407,11 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
             depth = round(((value - matrix.min_value) / span) * steps) if span else steps // 2
             parts.append(
                 svgcore.element(
-                    "rect", cls="mark cell", x=x + 1, y=y + 1,
+                    "rect", cls="mark cell", rx=4, x=x + 1, y=y + 1,
                     width=cell_width - 2, height=cell_height - 2,
                     style=svgcore.paint(SEQUENTIAL[depth]),
                     **{
-                        "data-tip": f"{row.specialty} × {channel}: {svgcore.fmt(value)}",
+                        "data-tip": f"{row.label} × {channel}: {svgcore.fmt(value)}",
                         "data-specialty": row.specialty,
                         "data-channel": channel,
                     },

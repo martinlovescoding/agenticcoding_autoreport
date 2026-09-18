@@ -13,162 +13,100 @@
   HTML comments are neither substituted nor shipped, so this comment costs the
   page nothing. A slot the view model does not supply raises rather than rendering
   an empty hole, and `tests/test_template_slots.py` holds the two ends together.
+
+  The visual language is the delivered green/stone design. Two things it did not
+  have and that are kept from the previous revision because dropping them would be a
+  regression rather than a restyle:
+
+    * the tooltip is keyboard-reachable and clamps to the viewport, where the
+      delivered design is pointer-only;
+    * the layout survives a phone — the delivered design's grid does not wrap.
+
+  It is deliberately LIGHT ONLY, as delivered. A committed single-theme design may
+  skip the dark blocks, but it must still paint its ground and every colour
+  explicitly, which is what the `:root` block below does. `report.document` reads
+  that back off the rendered page and tells the browser so: `color-scheme` promises
+  the form controls and scrollbars the page can actually stand behind.
 -->
 
 <title>Multichannel Engagement</title><style>
   /* --- tokens -------------------------------------------------------------
-     Every colour the page can use is declared here, once per theme. Nothing
-     below this block names a colour: components are styled through the tokens,
-     which is what makes a palette change a change to this block alone.
+     Every colour the page can use is declared here, once. Nothing below this
+     block names a colour: components are styled through the tokens, which is what
+     makes a palette change a change to this one block.
 
-     Three theme states have to resolve, not two. `:root` is the complete light
-     palette — the state a viewer sees is the un-stamped document, so a token
-     defined only inside a media query would leave that reader with no colour at
-     all. The dark palette is then re-declared twice, identically: once behind
-     `prefers-color-scheme` for the operating system's choice, and once behind
-     `[data-theme="dark"]` for the viewer's own toggle, so an explicit choice
-     beats the system in either direction. */
+     ALL of them are in this single `:root` block on purpose. The delivered design
+     spread its light tokens over two `:root` blocks and relied on CSS merging them;
+     `_scopes()` in the template tests keys by selector, so the second block silently
+     erases the first and half the palette disappears from every check. One block,
+     one source of truth. */
   :root {
     color-scheme: light;
 
     /* surfaces */
-    --bg:         #ffffff;
-    --card:       #ffffff;
-    --tile:       #f5f5f7;
-    --band-bg:    #000000;
-    --band-fg:    #f5f5f7;
-    --band-muted: #a1a1a6;
-    --nav-bg:     rgba(0, 0, 0, .8);
-    --nav-fg:     #e8e8ed;
+    --bg:          #f6f5f3;
+    --card:        #ffffff;
+    --stone:       #e5e3de;
+    --stone-light: #f1f0ed;
 
-    /* ink — each one clears 4.5:1 on every surface above it can land on */
-    --text-primary:   #1d1d1f;
-    --text-secondary: #5b5b60;
-    --text-muted:     #6e6e73;
-    --grid:           #e8e8ed;
-    --axis:           #d2d2d7;
-    --accent:         #0071e3;
-    --tip-bg:         rgba(29, 29, 31, .94);
-    --tip-fg:         #ffffff;
+    /* ink — each one clears 4.5:1 on every surface above it can land on.
+       `--text-muted` is darker than the delivered design's #6b6b6b, which reached
+       only 4.16:1 on `--stone`: a caption on the stone band was below the floor.
+       `test_every_text_token_is_readable_on_every_surface_the_design_declares` is
+       what holds this, and it is why the value moved rather than the band. */
+    --text-primary:   #191919;
+    --text-secondary: #2e2d2c;
+    --text-muted:     #616161;
+    --grid:           #e5e3de;
+    --axis:           #b9b6ae;
 
-    /* the KPI gradient — decoration on the inverted band, so it is read against
-       --band-bg rather than against a page surface */
-    --kpi-a: #6cb6ff;
-    --kpi-b: #a78bfa;
-    --kpi-c: #ff8ab3;
+    /* the green panel — its own ground, so it carries its own ink rather than
+       borrowing the page's. `--accent` clears 8.35:1 on `--green` and only 1.70:1
+       on white, so it is a panel colour and never link text on a light surface. */
+    --green:       #08312a;
+    --green-deep:  #051d19;
+    --accent:      #00e47c;
+    --sage:        #b6cdbf;
+    --panel-fg:    #ffffff;
+    --panel-muted: #b6cdbf;
 
-    --frame-ring:   0 0 0 1px rgba(0, 0, 0, .05);
-    --frame-shadow: 0 20px 60px rgba(0, 0, 0, .06);
+    --tip-bg: #08312a;
+    --tip-fg: #ffffff;
 
     /* Identity — one slot per channel, in schema order, never by rank. A channel
        keeps its colour when it moves up or down the ranking, so a filter or a new
-       period never repaints the survivors. */
-    --ch-1: #2a78d6;  /* F2F Call */
-    --ch-2: #eb6834;  /* Phone Call */
-    --ch-3: #1baf7a;  /* Screen-to-Screen Call */
-    --ch-4: #eda100;  /* Rep Email */
-    --ch-5: #e87ba4;  /* HQ Email */
-    --ch-6: #008300;  /* Event */
-    --ch-7: #4a3aa7;  /* Web */
+       period never repaints the survivors.
 
-    /* Magnitude — one hue, light to dark. Never the categorical slots.
-       Each step carries the ink its own cell needs, so the pairing between a shade
-       and the text on it is one table a designer can read, not a rule inferred from
-       depth. */
-    --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
-    --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
-    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-    --seq-4: #256abf;  --seq-4-ink: #ffffff;
-    --seq-5: #104281;  --seq-5-ink: #ffffff;
-  }
+       These are the delivered design's values, kept as the brand rather than
+       corrected. They do not pass the palette validator: #08312a and #b6cdbf sit
+       outside the lightness band, #08312a/#6b8375/#b6cdbf fall under the chroma
+       floor ("reads gray"), and three are below 3:1 against white. That is a
+       documented deviation, not an oversight — the relief the validator demands is
+       present and computed: every bar is directly labelled with its value, every
+       chart has a table twin beneath it, and the legend swatches carry the names. */
+    --ch-1: #08312a;  /* F2F Call */
+    --ch-2: #00b862;  /* Phone Call */
+    --ch-3: #6b8375;  /* Screen-to-Screen Call */
+    --ch-4: #b6cdbf;  /* Rep Email */
+    --ch-5: #e0a100;  /* HQ Email */
+    --ch-6: #2a78d6;  /* Event */
+    --ch-7: #c2410c;  /* Web */
 
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
+    /* Magnitude — one hue, light to dark, never the categorical slots. Each step
+       carries the ink its own cell needs, so the shade/text pairing is one table a
+       designer can read rather than a rule inferred from depth.
 
-      --bg:         #000000;
-      --card:       #0b0b0d;
-      --tile:       #1d1d1f;
-      /* The band is near-black on a light page and *raised* on a dark one. An
-         automatic flip would make it the page itself, and the section would vanish. */
-      --band-bg:    #1d1d1f;
-      --band-fg:    #f5f5f7;
-      --band-muted: #a1a1a6;
-      --nav-bg:     rgba(20, 20, 22, .8);
-      --nav-fg:     #f5f5f7;
-
-      --text-primary:   #f5f5f7;
-      --text-secondary: #c7c7cc;
-      --text-muted:     #a1a1a6;
-      --grid:           #2a2a2d;
-      --axis:           #424245;
-      --accent:         #3f9bff;
-      --tip-bg:         rgba(245, 245, 247, .94);
-      --tip-fg:         #1d1d1f;
-
-      /* The ramp runs the other way on a dark surface: the deepest value is the
-         lightest cell. Its lowest step also has to clear the surface to read as a
-         cell at all, so the ramp starts one step up rather than at the darkest blue.
-         Ink is re-paired to match — every step clears 5.2:1. */
-      --ch-1: #3987e5;
-      --ch-2: #d95926;
-      --ch-3: #199e70;
-      --ch-4: #c98500;
-      --ch-5: #d55181;
-      --ch-6: #008300;
-      --ch-7: #9085e9;
-
-      --seq-1: #256abf;  --seq-1-ink: #ffffff;
-      --seq-2: #3987e5;  --seq-2-ink: #0d1117;
-      --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-      --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
-      --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
-
-      --frame-ring:   0 0 0 1px rgba(255, 255, 255, .08);
-      --frame-shadow: 0 20px 60px rgba(0, 0, 0, .6);
-    }
-  }
-
-  /* The same palette again for the stamp, so the toggle wins in both directions.
-     It must stay identical to the block above — a token the media query moves and
-     the stamp does not leaves the page half-lit in one of the two states. */
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-
-    --bg:         #000000;
-    --card:       #0b0b0d;
-    --tile:       #1d1d1f;
-    --band-bg:    #1d1d1f;
-    --band-fg:    #f5f5f7;
-    --band-muted: #a1a1a6;
-    --nav-bg:     rgba(20, 20, 22, .8);
-    --nav-fg:     #f5f5f7;
-
-    --text-primary:   #f5f5f7;
-    --text-secondary: #c7c7cc;
-    --text-muted:     #a1a1a6;
-    --grid:           #2a2a2d;
-    --axis:           #424245;
-    --accent:         #3f9bff;
-    --tip-bg:         rgba(245, 245, 247, .94);
-    --tip-fg:         #1d1d1f;
-
-    --ch-1: #3987e5;
-    --ch-2: #d95926;
-    --ch-3: #199e70;
-    --ch-4: #c98500;
-    --ch-5: #d55181;
-    --ch-6: #008300;
-    --ch-7: #9085e9;
-
-    --seq-1: #256abf;  --seq-1-ink: #ffffff;
-    --seq-2: #3987e5;  --seq-2-ink: #0d1117;
-    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
-    --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
-    --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
-
-    --frame-ring:   0 0 0 1px rgba(255, 255, 255, .08);
-    --frame-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+       Seven steps from the delivered design's greens, with #4a8466 left out: it is
+       the one zone where neither white (4.39:1) nor near-black (4.48:1) reaches
+       4.5:1, and the design set white text on it. `test_every_step_of_the_ramp_is_
+       readable_on_its_own_cell` fails the design as delivered. */
+    --seq-1: #e3efe7;  --seq-1-ink: #191919;
+    --seq-2: #cfe3d6;  --seq-2-ink: #191919;
+    --seq-3: #9bbca8;  --seq-3-ink: #191919;
+    --seq-4: #63977a;  --seq-4-ink: #191919;
+    --seq-5: #357054;  --seq-5-ink: #ffffff;
+    --seq-6: #245c44;  --seq-6-ink: #ffffff;
+    --seq-7: #08312a;  --seq-7-ink: #ffffff;
   }
 
   /* --- base ---------------------------------------------------------------- */
@@ -181,96 +119,193 @@
     margin: 0;
     background: var(--bg);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-      "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 17px;
-    line-height: 1.45;
-    letter-spacing: -.01em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+      Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  h1, h2, h3 { letter-spacing: -.01em; text-wrap: balance; }
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 3px; }
+  .panel :focus-visible { outline-color: var(--accent); }
 
-  /* --- navigation ---------------------------------------------------------- */
+  /* --- layout -------------------------------------------------------------
+     One wrapper owns the side gutter, and it is set as `padding` with the
+     horizontal value written out rather than as a shorthand that could zero it.
+     A table or a chart may be wider than the page, but only inside its own
+     `.scroller`; the page body itself never scrolls sideways. */
+  .wrap {
+    max-width: 1128px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .sec { padding-block: 64px; }
+  .sec-tight { padding-block: 40px; }
+  .sec-stone { background: var(--stone); }
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
+
+  /* --- the header ---------------------------------------------------------- */
+  /* --- the green ground ----------------------------------------------------
+     One rule for every dark-green surface on the page: the header, the hero and the
+     footer all carry `.panel`, so the ink that works there is stated once.
+
+     It re-points the text tokens as well as setting `color`. White on this green is
+     14.16:1 and the page's own `--text-primary` on it is 1.2:1 — so any element that
+     inherits `--text-primary` and lands inside a panel would otherwise be unreadable,
+     silently. Re-pointing means a new element dropped into the header or the footer
+     is correct by default rather than correct only if its author remembered. */
+  .panel {
+    background: var(--green);
+    color: var(--panel-fg);
+    --text-primary: var(--panel-fg);
+    --text-secondary: var(--panel-muted);
+    --text-muted: var(--panel-muted);
+    --grid: rgba(255, 255, 255, .16);
+    --axis: rgba(255, 255, 255, .32);
+  }
+
   .nav {
     position: sticky;
     top: env(safe-area-inset-top, 0px);
-    z-index: 5;
-    height: 48px;
-    background: var(--nav-bg);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    z-index: 6;
   }
-  .nav ul {
-    list-style: none;
-    margin: 0 auto;
-    /* The side gutter is 22px at every width: this is a padding *shorthand* whose
-       horizontal value is set, never zeroed. */
-    padding: 0 22px;
-    max-width: 1024px;
-    height: 48px;
+  .nav .bar {
     display: flex;
     align-items: center;
-    gap: 28px;
-    font-size: 12px;
-    color: var(--nav-fg);
+    gap: 20px;
+    min-height: 66px;
   }
-  .nav li:first-child { font-weight: 600; margin-right: auto; font-size: 14px; }
-  .nav li a { color: inherit; text-decoration: none; opacity: .8; }
-  .nav li a:hover { opacity: 1; }
-
-  /* --- sections ------------------------------------------------------------ */
-  .sec { padding: 104px 22px 96px; text-align: center; }
-  .sec .kicker { font-size: 19px; color: var(--text-secondary); font-weight: 600; margin: 0 0 6px; }
-  .sec h1 { margin: 0; font-size: 80px; font-weight: 600; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
-  .sec h2 { margin: 0; font-size: 56px; font-weight: 600; letter-spacing: -.015em; line-height: 1.07; text-wrap: balance; }
-  .sec .tag { margin: 14px auto 0; font-size: 24px; line-height: 1.25; color: var(--text-secondary); max-width: 720px; }
-
-  .cta { margin: 28px 0 0; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-  .cta a { display: inline-block; padding: 11px 22px; border-radius: 980px; font-size: 17px; text-decoration: none; }
-  .cta a.pri { background: var(--accent); color: #ffffff; }
-  .cta a.ghost { border: 1px solid var(--accent); color: var(--accent); }
-
-  /* --- the inverted band ---------------------------------------------------
-     A dark island inside a light page, and in dark mode a raised one. The band
-     re-points the text tokens at its own ink, so everything styled through them —
-     the kicker, the numbers and their notes — resolves against the band's ground
-     without a second set of rules. */
-  .band {
-    background: var(--band-bg);
-    color: var(--band-fg);
-    --text-primary: var(--band-fg);
-    --text-secondary: var(--band-muted);
-    --text-muted: var(--band-muted);
+  /* A neutral title block. The delivered design carries a corporate wordmark and
+     logo here; a generated report should not present itself as a document issued
+     by a company it has no relationship with. */
+  .brand { margin-right: auto; min-width: 0; }
+  .brand b { display: block; font-size: 16px; font-weight: 600; line-height: 1.2; }
+  .brand span { display: block; font-size: 13px; color: var(--sage); }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
   }
-  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; max-width: 1024px; margin: 56px auto 0; }
+  .links a { color: inherit; text-decoration: none; padding: 4px 0; }
+  .panel .links a:hover { color: var(--accent); }
+  .subnav {
+    border-top: 1px solid rgba(255, 255, 255, .16);
+    font-size: 13px;
+  }
+  .subnav .wrap { display: flex; flex-wrap: wrap; gap: 6px 22px; padding-block: 10px; }
+  .subnav .wrap > * { min-width: 0; }
+  .subnav a { color: var(--sage); text-decoration: none; }
+  .panel .subnav a:hover { color: var(--accent); }
+
+  /* A file path is a single unbreakable token, and the one this page prints is whatever
+     the caller passed to `--input` — in a test run, a 130-character temp path. At phone
+     width that is wider than the screen, and it takes the whole page with it: the page
+     measured 512px inside a 400px frame, with the overflow coming from the header, not
+     from the charts. `overflow-wrap: anywhere` is the variant that also collapses the
+     element's *min-content* width — `break-word` wraps the text but leaves the element
+     still sized as though it had not — so this works for a flex item that measures
+     itself against its content. `min-width: 0` lets the item actually give way. */
+  .path { overflow-wrap: anywhere; min-width: 0; }
+
+  /* --- the hero ------------------------------------------------------------ */
+  .hero-panel {
+    /* The card below overlaps this panel's lower edge, so the panel carries the
+       extra room instead of the card carrying a negative offset it cannot see. */
+    padding-block: 56px 112px;
+  }
+  .panel .kicker {
+    margin: 0 0 14px;
+    font-size: 13px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .panel h1 {
+    margin: 0 0 20px;
+    font-size: 46px;
+    font-weight: 500;
+    line-height: 1.12;
+    max-width: 15ch;
+  }
+  .panel .lead {
+    margin: 0 0 28px;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--sage);
+    max-width: 62ch;
+  }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .cta a {
+    display: inline-block;
+    padding: 11px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 2px;
+  }
+  .cta a.pri { background: var(--accent); color: var(--green-deep); }
+  .cta a.ghost { border: 1px solid rgba(255, 255, 255, .4); color: var(--panel-fg); }
+  .panel .cta a.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* --- the overlapping card ------------------------------------------------
+     The hero chart and the headline figures share one card lifted over the green
+     panel. It sits on `--card`, which is what lets the chart keep the page's own
+     ink tokens: a chart drawn on the green ground would paint its labels
+     `--text-secondary` and its line `--seq-6`, and both are dark on dark. */
+  .overlap {
+    position: relative;
+    z-index: 1;
+    margin-top: -72px;
+    background: var(--card);
+    border-radius: 4px;
+    padding: 32px 32px 28px;
+    box-shadow: 0 18px 44px rgba(8, 49, 42, .14);
+  }
+  .overlap h2 { margin: 0 0 4px; font-size: 22px; font-weight: 500; color: var(--green); }
+  .overlap .sub { margin: 0 0 8px; font-size: 14px; color: var(--text-muted); }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 28px 24px;
+    margin-top: 28px;
+    padding-top: 26px;
+    border-top: 1px solid var(--grid);
+  }
+  /* A grid track has a floor at its item's min-content width, so both halves of
+     this are needed: `minmax(0, …)` on the track and `min-width: 0` on the item. */
   .kpi { min-width: 0; }
   .kpi b {
     display: block;
-    font-size: 68px;
-    font-weight: 600;
-    letter-spacing: -.03em;
+    font-size: 46px;
+    font-weight: 500;
     line-height: 1;
-    margin: 6px 0 10px;
-    background: linear-gradient(90deg, var(--kpi-a), var(--kpi-b) 50%, var(--kpi-c));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    margin: 0 0 8px;
+    color: var(--green);
     font-variant-numeric: tabular-nums;
   }
-  .kpi small { display: block; font-size: 17px; color: var(--text-secondary); font-weight: 400; }
-  .kpi span { display: block; margin-top: 6px; color: var(--text-muted); font-size: 14px; }
+  .kpi small { display: block; font-size: 15px; font-weight: 600; }
+  .kpi span { display: block; margin-top: 4px; color: var(--text-muted); font-size: 13px; }
 
   /* --- a chart card -------------------------------------------------------- */
-  .stage { max-width: 980px; margin: 48px auto 0; text-align: left; }
-  .frame {
+  .card {
     background: var(--card);
-    border-radius: 28px;
-    padding: 36px 44px 30px;
-    box-shadow: var(--frame-ring), var(--frame-shadow);
+    border-radius: 4px;
+    padding: 28px;
+    margin-top: 28px;
   }
+  .card h2 { margin: 0 0 4px; font-size: 26px; font-weight: 500; color: var(--green); }
+  .card .sub { margin: 0 0 20px; font-size: 14px; color: var(--text-muted); }
+  .sec-stone .card { margin-top: 24px; }
+
   .chart { width: 100%; height: auto; display: block; overflow: visible; }
-  .chart-heat { max-width: 680px; }
-  .frame .chart-heat { max-width: 100%; }
+  .chart-heat { max-width: 720px; }
+
   /* Chart ink. Text wears text tokens, never a series colour — the mark beside a
      label carries the identity, and the only fill a chart text element may name is
      an `-ink` token, which is a readability choice rather than a series. */
@@ -283,9 +318,9 @@
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    /* A bar's value is written just outside its data end, which for a long bar
-       falls across a gridline. The stroke paints behind the fill (paint-order), so
-       a surface-coloured stroke punches the label out of the rule it sits on. */
+    /* A value is written just outside its data end, which for a long bar falls
+       across a gridline. The stroke paints behind the fill (paint-order), so a
+       surface-coloured stroke punches the label out of the rule it sits on. */
     stroke: var(--card);
     stroke-width: 3px;
     paint-order: stroke fill;
@@ -294,34 +329,43 @@
   .chart .mark { cursor: default; transition: opacity .12s; }
   .chart:hover .mark { opacity: .55; }
   .chart .mark:hover, .chart .mark:focus-visible { opacity: 1; }
-  .chart .mark:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2px; }
+  .chart .mark:focus-visible { outline: none; stroke: var(--green); stroke-width: 2px; }
   /* An absent combination is marked, not left blank: a blank cell is
      indistinguishable from a rendering bug, and from a zero. */
   .chart .cell-empty { fill: none; stroke: var(--axis); stroke-dasharray: 3 3; }
+  /* The hero's own shapes. The line and the area under it are chrome rather than
+     marks — they encode no value a point does not also carry — so they are styled
+     by class and the points take the ramp slot. */
+  .chart .line { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .area { opacity: .5; }
+  /* A point carries a surface ring so two adjacent months never merge into one mark. */
+  .chart .point { stroke: var(--card); stroke-width: 2; }
 
   .legend {
     list-style: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 18px;
+    gap: 8px 20px;
     padding: 0;
     margin: 0 0 18px;
     font-size: 13px;
     color: var(--text-secondary);
   }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   .legend li { display: flex; align-items: center; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
 
   /* --- the insight under a chart ------------------------------------------- */
   .insight {
-    margin: 30px auto 0;
-    max-width: 720px;
-    font-size: 19px;
-    line-height: 1.42;
+    margin: 24px 0 0;
+    padding: 16px 20px;
+    background: var(--bg);
+    border-left: 4px solid var(--accent);
+    font-size: 15px;
+    line-height: 1.55;
     color: var(--text-secondary);
-    text-align: center;
   }
   .insight b { color: var(--text-primary); font-weight: 600; }
+  .sec-stone .insight { background: var(--stone-light); }
 
   /* --- tables -------------------------------------------------------------- */
   table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -329,48 +373,57 @@
   th:first-child, td:first-child { text-align: left; }
   th { color: var(--text-muted); font-weight: 600; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
   tbody th { color: var(--text-primary); font-size: 14px; letter-spacing: 0; text-transform: none; }
+  .num { font-variant-numeric: tabular-nums; }
 
-  details { margin: 22px 0 0; }
-  details summary { cursor: pointer; color: var(--accent); font-size: 15px; }
+  details { margin: 20px 0 0; }
+  details summary { cursor: pointer; color: var(--green); font-size: 15px; font-weight: 600; }
   details summary::-webkit-details-marker { display: none; }
   details summary:after { content: " ›"; }
   details[open] summary:after { content: " ⌄"; }
   details .scroller { margin-top: 12px; }
 
-  /* Only a table may be wider than the page, and then only inside a box that
-     scrolls by itself — the body must never scroll sideways. */
-  .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
-
-  /* --- the two grey tiles -------------------------------------------------- */
+  /* --- the two tiles on the stone band ------------------------------------- */
   .grid2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
-    max-width: 1024px;
-    margin: 56px auto 0;
-    text-align: left;
-    padding: 0 22px;
+    gap: 24px;
+    margin-top: 28px;
   }
-  .tile { background: var(--tile); border-radius: 28px; padding: 36px 36px 30px; min-width: 0; }
-  .tile h3 { margin: 0 0 6px; font-size: 26px; font-weight: 600; }
-  .tile p { margin: 0 0 20px; color: var(--text-secondary); font-size: 16px; line-height: 1.4; }
+  /* The tiles are white cards *on* the stone band, not bare panels of it. Two reasons
+     and both are the same reason: `--grid` and `--stone` are the same grey in this
+     design, so a table's row rules drawn straight onto the band are invisible — the
+     quality ledger read as unruled prose — and every text token has to be its most
+     careful self there. On `--card` the rules are rules and the ink has room. */
+  .tile {
+    min-width: 0;
+    background: var(--card);
+    border-radius: 4px;
+    padding: 24px;
+    margin-top: 0;
+  }
+  .band h2 { margin: 0; font-size: 26px; font-weight: 500; color: var(--green); }
+  .band .sub { margin: 10px 0 0; max-width: 62ch; color: var(--text-secondary); }
+  .tile h3 { margin: 0 0 6px; font-size: 22px; font-weight: 500; color: var(--green); }
+  .tile p { margin: 0 0 16px; color: var(--text-secondary); font-size: 15px; }
   .tile table { font-size: 13px; }
   .tile th, .tile td { padding: 8px 6px; }
-  .tile ul { margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 15px; line-height: 1.5; }
-  .tile li + li { margin-top: 10px; }
+  /* The table's outer edges sit flush with the tile's own text, so its columns read as
+     aligned with the heading above them rather than indented inside it. */
+  .tile th:first-child, .tile td:first-child { padding-left: 0; }
+  .tile th:last-child, .tile td:last-child { padding-right: 0; }
+  .tile ul { margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 15px; }
+  .tile li + li { margin-top: 12px; }
   .tile li b { color: var(--text-primary); font-weight: 600; }
 
+  /* --- the footer ---------------------------------------------------------- */
   footer {
-    margin-top: 96px;
-    padding: 36px 22px calc(36px + env(safe-area-inset-bottom, 0px));
-    background: var(--tile);
-    color: var(--text-muted);
-    font-size: 12px;
-    text-align: center;
-    /* A filesystem path is one unbreakable token. Left alone it is wider than a
-       phone and takes the whole layout with it. */
-    overflow-wrap: anywhere;
+    color: var(--panel-muted);
+    padding-block: 40px calc(40px + env(safe-area-inset-bottom, 0px));
+    font-size: 13px;
   }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 32px; }
+  footer .wrap > * { min-width: 0; }
+  footer b { color: var(--panel-fg); font-weight: 600; }
 
   /* --- the hover layer ----------------------------------------------------- */
   .tooltip {
@@ -380,7 +433,7 @@
     z-index: 20;
     max-width: min(300px, 78vw);
     padding: 7px 10px;
-    border-radius: 8px;
+    border-radius: 3px;
     background: var(--tip-bg);
     color: var(--tip-fg);
     font-size: 12px;
@@ -402,149 +455,186 @@
      into illegibility. Only the chart scrolls: nothing else on the page moves
      sideways, and the legend and the table view stay where they are. */
   @media (max-width: 640px) {
-    .frame .scroller .chart { min-width: 620px; }
+    .scroller .chart { min-width: 620px; }
+    .scroller { margin-inline: -12px; padding-inline: 12px; }
   }
 
   @media (max-width: 900px) {
-    .sec h1 { font-size: 52px; }
-    .sec h2 { font-size: 38px; }
-    .sec .tag { font-size: 20px; }
-    .hero .tag { font-size: 20px; }
+    .panel h1 { font-size: 34px; }
+    .panel .lead { font-size: 17px; }
+    .hero-panel { padding-block: 40px 96px; }
+    .overlap { margin-top: -64px; padding: 24px; }
+    .card { padding: 20px; }
+    .kpi b { font-size: 36px; }
   }
   @media (max-width: 820px) {
-    .sec { padding: 76px 22px 68px; }
-    .frame { padding: 22px; border-radius: 20px; }
-    .tile { padding: 26px; border-radius: 20px; }
     .grid2 { grid-template-columns: minmax(0, 1fr); }
-    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
-    .kpi b { font-size: 52px; }
-    .nav ul { gap: 18px; font-size: 11px; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .nav .bar { flex-wrap: wrap; padding-block: 12px; }
+    .brand { margin-right: 0; width: 100%; }
+    .sec { padding-block: 48px; }
   }
 </style>
 
-<nav class="nav">
-  <ul>
-    <li>Multichannel</li>
-    <li><a href="#channels">Channel mix</a></li>
-    <li><a href="#trend">Trend</a></li>
-    <li><a href="#specialties">Specialties</a></li>
-    <li><a href="#data">Data</a></li>
-  </ul>
-</nav>
-
-<section class="sec hero">
-  <p class="kicker">Multichannel engagement · {{PERIOD_LABEL}}</p>
-  <h1>Every channel.<br>One picture.</h1>
-  <p class="tag">{{HERO_TAGLINE}}</p>
-  <div class="cta">
-    <a class="pri" href="#channels">Read the analysis</a>
-    <a class="ghost" href="#data">Data basis ›</a>
+<header class="nav panel">
+  <div class="wrap bar">
+    <div class="brand">
+      <b>Multichannel Engagement</b>
+      <span>{{PERIOD_LABEL}}</span>
+    </div>
+    <nav aria-label="Sections">
+      <ul class="links">
+        <li><a href="#figures">Zahlen</a></li>
+        <li><a href="#channels">Kanäle</a></li>
+        <li><a href="#trend">Verlauf</a></li>
+        <li><a href="#specialties">Fachrichtungen</a></li>
+        <li><a href="#data">Datenbasis</a></li>
+      </ul>
+    </nav>
   </div>
-</section>
+  <div class="subnav">
+    <div class="wrap">
+      <span>Quelle: <b class="path">{{SOURCE_FILE}}</b></span>
+      <span>Stand: {{GENERATED_AT}}</span>
+    </div>
+  </div>
+</header>
 
-<section class="sec band" aria-label="Headline figures">
-  <h2>The numbers.</h2>
-  <p class="tag">The period in four figures.</p>
-  <div class="kpis">
-    <div class="kpi">
-      <b>{{KPI_INTERACTIONS}}</b>
-      <small>Interactions</small>
-      <span>{{KPI_INTERACTIONS_NOTE}}</span>
-    </div>
-    <div class="kpi">
-      <b>{{KPI_HCPS}}</b>
-      <small>HCPs reached</small>
-      <span>{{KPI_HCPS_NOTE}}</span>
-    </div>
-    <div class="kpi">
-      <b>{{KPI_AVG_ENGAGEMENT}}</b>
-      <small>Mean engagement</small>
-      <span>Score 0–100</span>
-    </div>
-    <div class="kpi">
-      <b>{{KPI_EMAIL_OPEN_RATE}}</b>
-      <small>Email open rate</small>
-      <span>{{KPI_EMAIL_OPEN_RATE_NOTE}}</span>
+<section class="panel hero-panel">
+  <div class="wrap">
+    <p class="kicker">Multichannel-Report · {{PERIOD_LABEL}}</p>
+    <h1>Jeder Kontakt gezählt, jede Zahl belegt.</h1>
+    <p class="lead">{{HERO_TAGLINE}}</p>
+    <div class="cta">
+      <a class="pri" href="#channels">Zur Auswertung</a>
+      <a class="ghost" href="#data">Datenbasis</a>
     </div>
   </div>
 </section>
 
-<section class="sec" id="channels" aria-labelledby="channels-h">
-  <h2 id="channels-h">Channel mix.</h2>
-  <p class="tag">Which channel carried the volume — and which one actually landed.</p>
-  <div class="stage">
-    <div class="frame"><div class="scroller">{{{CHANNEL_CHART}}}</div></div>
-  </div>
-  <p class="insight">{{{CHANNEL_TAKEAWAY}}}</p>
-  <details>
-    <summary>Table view — volume, share, reach and mean engagement</summary>
-    <div class="scroller">{{{CHANNEL_TABLE}}}</div>
-  </details>
-</section>
-
-<section class="sec band" id="trend" aria-labelledby="trend-h">
-  <h2 id="trend-h">The trend.</h2>
-  <p class="tag">How the mix moved, one stack per month.</p>
-  <div class="stage">
-    <div class="frame">
-      {{{TREND_LEGEND}}}
-      <div class="scroller">{{{TREND_CHART}}}</div>
+<div class="wrap">
+  <section class="overlap" id="figures" aria-labelledby="figures-h">
+    <h2 id="figures-h">Interaktionen je Monat</h2>
+    <p class="sub">Gesamtvolumen, bereinigt — die Aufteilung nach Kanal steht im Verlauf.</p>
+    <div class="scroller">{{{HERO_CHART}}}</div>
+    <div class="kpis">
+      <div class="kpi">
+        <b>{{KPI_INTERACTIONS}}</b>
+        <small>Interaktionen</small>
+        <span>{{KPI_INTERACTIONS_NOTE}}</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_HCPS}}</b>
+        <small>Erreichte HCPs</small>
+        <span>{{KPI_HCPS_NOTE}}</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_AVG_ENGAGEMENT}}</b>
+        <small>Ø Engagement</small>
+        <span>Score 0–100</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_EMAIL_OPEN_RATE}}</b>
+        <small>Öffnungsrate E-Mail</small>
+        <span>{{KPI_EMAIL_OPEN_RATE_NOTE}}</span>
+      </div>
     </div>
-  </div>
-  <p class="insight">{{{TREND_TAKEAWAY}}}</p>
-  <details>
-    <summary>Table view — interactions per month, by channel</summary>
-    <div class="scroller">{{{TREND_TABLE}}}</div>
-  </details>
-</section>
-
-<section class="sec" id="specialties" aria-labelledby="specialties-h">
-  <h2 id="specialties-h">By specialty.</h2>
-  <p class="tag">Whether the specialty or the channel explains engagement.</p>
-  <div class="stage">
-    <div class="frame"><div class="scroller">{{{SPECIALTY_CHART}}}</div></div>
-  </div>
-  <p class="insight">{{{SPECIALTY_TAKEAWAY}}}</p>
-  <details>
-    <summary>Table view — mean engagement per specialty and channel</summary>
-    <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
-  </details>
-</section>
-
-<div class="grid2">
-  <div class="tile" id="data">
-    <h3>Data basis</h3>
-    <p>{{QUALITY_HEADLINE}}</p>
-    <div class="scroller">{{{QUALITY_TABLE}}}</div>
-  </div>
-  <div class="tile">
-    <h3>How to read this</h3>
-    <ul>
-      <li>
-        <b>One row is one interaction.</b> Only rows that survived cleaning are
-        counted, and the ledger beside this accounts for every row that did not.
-      </li>
-      <li>
-        <b>A missing score is not a zero.</b> Those rows count toward the volume and
-        are excluded from every average. Nothing is imputed and no value is invented.
-      </li>
-      <li>
-        <b>Dates are read day-first.</b> A numeric date whose first field is above 12
-        is read month-first, because that reading is the only unambiguous one.
-      </li>
-      <li>
-        <b>Colour is identity, not rank.</b> A channel keeps its hue when it changes
-        place between periods, and every chart carries its values as text — in the
-        table view beneath it, and on the marks where they fit.
-      </li>
-    </ul>
-  </div>
+  </section>
 </div>
 
-<footer>
-  Generated from <span style="color:var(--text-secondary)">{{SOURCE_FILE}}</span> on
-  {{GENERATED_AT}} · {{MISSING_SCORE_NOTE}} · The page is self-contained: it makes no
-  network requests and can be read offline.
+<section class="sec" id="channels" aria-labelledby="channels-h">
+  <div class="wrap">
+    <div class="card">
+      <h2 id="channels-h">Kanal-Mix</h2>
+      <p class="sub">Welcher Kanal das Volumen trägt — und welcher tatsächlich ankommt.</p>
+      <div class="scroller">{{{CHANNEL_CHART}}}</div>
+      <p class="insight">{{{CHANNEL_TAKEAWAY}}}</p>
+      <details>
+        <summary>Tabellenansicht — Volumen, Anteil, Reichweite und Ø Engagement</summary>
+        <div class="scroller">{{{CHANNEL_TABLE}}}</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="trend" aria-labelledby="trend-h">
+  <div class="wrap">
+    <div class="card">
+      <h2 id="trend-h">Verlauf</h2>
+      <p class="sub">Wie sich der Mix bewegt hat, ein Stapel je Monat.</p>
+      {{{TREND_LEGEND}}}
+      <div class="scroller">{{{TREND_CHART}}}</div>
+      <p class="insight">{{{TREND_TAKEAWAY}}}</p>
+      <details>
+        <summary>Tabellenansicht — Interaktionen je Monat, nach Kanal</summary>
+        <div class="scroller">{{{TREND_TABLE}}}</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-stone" id="specialties" aria-labelledby="specialties-h">
+  <div class="wrap">
+    <div class="card">
+      <h2 id="specialties-h">Engagement nach Fachrichtung</h2>
+      <p class="sub">Ø Engagement-Score (0–100) je Fachrichtung und Kanal.</p>
+      <div class="scroller">{{{SPECIALTY_CHART}}}</div>
+      <p class="insight">{{{SPECIALTY_TAKEAWAY}}}</p>
+      <details>
+        <summary>Tabellenansicht — Ø Engagement je Fachrichtung und Kanal</summary>
+        <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-stone band" id="data" aria-labelledby="data-h">
+  <div class="wrap">
+    <h2 id="data-h">Datenbasis und Bereinigung</h2>
+    <p class="sub">Jeder Wert in diesem Report ist auf die Rohdaten zurückführbar. Das Protokoll zeigt, was aussortiert oder korrigiert wurde.</p>
+    <div class="grid2">
+      <div class="tile">
+        <h3>Datenqualität</h3>
+        <p>{{QUALITY_HEADLINE}}</p>
+        <div class="scroller">{{{QUALITY_TABLE}}}</div>
+      </div>
+      <div class="tile">
+        <h3>Lesehinweise</h3>
+        <ul>
+          <li>
+            <b>Eine Zeile ist eine Interaktion.</b> Gezählt wird nur, was die
+            Bereinigung überlebt hat — das Protokoll daneben weist jede Zeile aus,
+            die es nicht getan hat.
+          </li>
+          <li>
+            <b>Ein fehlender Score ist keine Null.</b> Diese Zeilen zählen zum
+            Volumen und bleiben aus jedem Mittelwert heraus. Es wird nichts
+            geschätzt und kein Wert erfunden.
+          </li>
+          <li>
+            <b>Daten werden tagesweise gelesen.</b> Ein numerisches Datum, dessen
+            erstes Feld über 12 liegt, wird monatsweise gelesen — das ist die
+            einzige eindeutige Lesart.
+          </li>
+          <li>
+            <b>Farbe ist Identität, nicht Rang.</b> Ein Kanal behält seinen Ton,
+            wenn er zwischen Perioden den Platz wechselt, und jeder Chart trägt
+            seine Werte als Text — in der Tabelle darunter und auf den Marken,
+            wo sie Platz haben.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="panel">
+  <div class="wrap">
+    <span>
+      Generiert am <b>{{GENERATED_AT}}</b> aus <b class="path">{{SOURCE_FILE}}</b>
+    </span>
+    <span>{{MISSING_SCORE_NOTE}}</span>
+  </div>
 </footer>
 
 <script>

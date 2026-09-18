@@ -100,7 +100,10 @@ def _report(args: argparse.Namespace) -> int:
         return 1
 
     rows, quality = clean.clean_rows(raw, as_of=args.as_of)
-    generated_at = (args.as_of or dt.date.today()).strftime("%d %B %Y")
+    # Numeric, never `%d %B %Y`: the month *name* resolves against the process locale,
+    # so the stamp would read differently on a German machine than on an English one.
+    # The report's text must be a function of the CSV alone.
+    generated_at = (args.as_of or dt.date.today()).strftime("%d.%m.%Y")
 
     slots = report.build_slots(
         rows, quality, source_file=str(source), generated_at=generated_at

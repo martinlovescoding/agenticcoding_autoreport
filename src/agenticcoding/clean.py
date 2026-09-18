@@ -113,18 +113,18 @@ class QualityNote:
 # Every stage, in pipeline order. All of them are always reported, even at zero,
 # so the report's quality table has a stable shape.
 _STAGE_LABELS: tuple[tuple[str, str], ...] = (
-    ("duplicates", "Duplicate interaction_id rows removed"),
-    ("id_missing", "Rows with a missing interaction_id removed"),
-    ("channels", "Channel names normalized (variants → 7 channels)"),
-    ("unknown_channel", "Rows with an unrecognized channel removed"),
-    ("specialties", "Specialty spellings unified"),
-    ("dates_invalid", "Rows with a missing or invalid date removed"),
-    ("dates_future", "Rows with a date in the future removed"),
-    ("duration_negative", "Negative duration corrected (absolute value)"),
-    ("duration_implausible", "Implausible duration (> 300 min) set to missing"),
-    ("engagement_clamped", "Engagement score clamped to 0–100"),
-    ("product_missing", "Missing product → 'Unknown'"),
-    ("rep_missing", "Missing rep name → 'Unassigned'"),
+    ("duplicates", "Duplikate (gleiche interaction_id) entfernt"),
+    ("id_missing", "Zeilen mit fehlender interaction_id entfernt"),
+    ("channels", "Kanalnamen normalisiert (Varianten → 7 Kanäle)"),
+    ("unknown_channel", "Zeilen mit unbekanntem Kanal entfernt"),
+    ("specialties", "Fachrichtungen vereinheitlicht (Schreibweise)"),
+    ("dates_invalid", "Zeilen mit fehlendem/ungültigem Datum entfernt"),
+    ("dates_future", "Zeilen mit Datum in der Zukunft entfernt"),
+    ("duration_negative", "Negative Dauer korrigiert (Betrag)"),
+    ("duration_implausible", "Unplausible Dauer (> 300 min) auf fehlend gesetzt"),
+    ("engagement_clamped", "Engagement-Score auf 0–100 begrenzt"),
+    ("product_missing", f"Fehlendes Produkt → '{schema.UNKNOWN_PRODUCT}'"),
+    ("rep_missing", f"Fehlender Außendienstname → '{schema.UNKNOWN_REP}'"),
 )
 
 

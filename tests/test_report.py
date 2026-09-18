@@ -38,7 +38,7 @@ def slots() -> dict[str, str]:
         SAMPLE,
         quality(8, 8),
         source_file="data/raw_activities.csv",
-        generated_at="18 September 2026",
+        generated_at="18.09.2026",
     )
 
 
@@ -46,20 +46,20 @@ def slots() -> dict[str, str]:
 
 
 def test_period_label_spans_the_months_in_the_data(slots):
-    """SAMPLE runs March–May 2026."""
-    assert slots["PERIOD_LABEL"] == "March – May 2026"
+    """SAMPLE runs März–Mai 2026."""
+    assert slots["PERIOD_LABEL"] == "März – Mai 2026"
 
 
 def test_period_label_on_a_single_month_names_only_that_month():
     rows = [interaction(date=dt.date(2026, 3, 2))]
     built = report.build_slots(rows, quality(1, 1), source_file="x.csv", generated_at="now")
 
-    assert built["PERIOD_LABEL"] == "March 2026"
+    assert built["PERIOD_LABEL"] == "März 2026"
 
 
 def test_source_and_timestamp_are_passed_through_verbatim(slots):
     assert slots["SOURCE_FILE"] == "data/raw_activities.csv"
-    assert slots["GENERATED_AT"] == "18 September 2026"
+    assert slots["GENERATED_AT"] == "18.09.2026"
 
 
 # --- the KPI strip ------------------------------------------------------------
@@ -81,14 +81,14 @@ def test_kpi_avg_engagement_ignores_the_missing_score(slots):
 
 def test_every_kpi_note_says_where_its_number_came_from(slots):
     """A headline figure without its denominator is a figure a reader cannot check."""
-    assert slots["KPI_INTERACTIONS_NOTE"] == "from 8 raw rows"
-    assert slots["KPI_HCPS_NOTE"] == "2 interactions per HCP"
-    assert slots["KPI_EMAIL_OPEN_RATE_NOTE"] == "50 % of opens clicked"
+    assert slots["KPI_INTERACTIONS_NOTE"] == "aus 8 Rohzeilen"
+    assert slots["KPI_HCPS_NOTE"] == "2 Interaktionen pro HCP"
+    assert slots["KPI_EMAIL_OPEN_RATE_NOTE"] == "50 % der Öffnungen angeklickt"
 
 
 def test_kpi_email_open_rate_is_a_percentage(slots):
     """Two of three emails opened."""
-    assert slots["KPI_EMAIL_OPEN_RATE"] == "66.7 %"
+    assert slots["KPI_EMAIL_OPEN_RATE"] == "66,7 %"
 
 
 def test_kpi_email_open_rate_on_no_email_data_is_a_dash():
@@ -103,7 +103,7 @@ def test_kpi_email_open_rate_on_no_email_data_is_a_dash():
 
 
 def test_quality_headline_states_the_attrition(slots):
-    assert slots["QUALITY_HEADLINE"] == "8 raw rows → 8 analysable (100 %)"
+    assert slots["QUALITY_HEADLINE"] == "8 Rohzeilen → 8 auswertbare Interaktionen (100 %)"
 
 
 def test_quality_headline_rounds_the_share(slots):
@@ -111,14 +111,14 @@ def test_quality_headline_rounds_the_share(slots):
         SAMPLE, quality(10, 9), source_file="x.csv", generated_at="now"
     )
 
-    assert built["QUALITY_HEADLINE"] == "10 raw rows → 9 analysable (90 %)"
+    assert built["QUALITY_HEADLINE"] == "10 Rohzeilen → 9 auswertbare Interaktionen (90 %)"
 
 
 def test_quality_table_has_a_row_per_stage(slots):
     table = slots["QUALITY_TABLE"]
 
     assert table.count("<tr") == len(clean._STAGE_LABELS) + 1, "one header row plus one per stage"
-    assert "Duplicate interaction_id rows removed" in table
+    assert "Duplikate (gleiche interaction_id) entfernt" in table
 
 
 def test_quality_table_shows_the_count_for_each_stage():
@@ -132,8 +132,8 @@ def test_quality_table_shows_the_count_for_each_stage():
 def test_missing_score_note_names_how_many_rows_it_affects(slots):
     """SAMPLE has one row without a score."""
     assert slots["MISSING_SCORE_NOTE"] == (
-        "Engagement score is missing on 1 of 8 interactions. Those rows count toward "
-        "volume and are excluded from every average — nothing is imputed."
+        "Bei 1 von 8 Interaktionen fehlt der Engagement-Score. Diese Zeilen zählen zum "
+        "Volumen und bleiben aus jedem Mittelwert heraus — es wird nichts geschätzt."
     )
 
 
@@ -144,9 +144,9 @@ def test_hero_tagline_leads_with_the_two_numbers_the_page_is_about(slots):
     """"Cleaned and analysed" is a claim; the counts are what make it checkable."""
     tagline = slots["HERO_TAGLINE"]
 
-    assert "8 interactions" in tagline
-    assert "4 health care professionals" in tagline
-    assert "March – May 2026" in tagline
+    assert "8 Interaktionen" in tagline
+    assert "4 HCPs" in tagline
+    assert "März – Mai 2026" in tagline
 
 
 def test_channel_slots_carry_a_takeaway_a_chart_and_a_table(slots):
@@ -175,8 +175,8 @@ def test_channel_takeaway_credits_the_best_engaged_channel_by_name():
 
     sentence = built["CHANNEL_TAKEAWAY"]
 
-    assert "<b>F2F Call</b> carries the most activity" in sentence
-    assert "<b>Event</b> posts the highest average engagement" in sentence
+    assert "<b>F2F Call</b> trägt die meiste Aktivität" in sentence
+    assert "<b>Event</b> hat das höchste durchschnittliche Engagement" in sentence
     assert "90" in sentence
 
 
@@ -184,8 +184,8 @@ def test_channel_takeaway_does_not_repeat_the_name_it_already_gave(slots):
     """When one channel is both, naming it twice reads as two channels."""
     sentence = slots["CHANNEL_TAKEAWAY"]
 
-    assert "<b>F2F Call</b> carries the most activity" in sentence
-    assert "and posts the highest average engagement" in sentence
+    assert "<b>F2F Call</b> trägt die meiste Aktivität" in sentence
+    assert "und hat das höchste durchschnittliche Engagement" in sentence
     assert sentence.count("F2F Call") == 1
 
 
@@ -199,13 +199,23 @@ def test_trend_table_has_a_row_per_month_and_a_column_per_channel(slots):
     table = slots["TREND_TABLE"]
 
     assert table.count("<tr") == 3 + 1, "three months plus the header"
-    assert "F2F Call" in table
+    assert "F2F" in table, "the column head is the short name, as the design sets it"
 
 
 def test_specialty_slots_carry_a_takeaway_a_chart_and_a_table(slots):
-    assert "Oncology" in slots["SPECIALTY_TAKEAWAY"]
+    assert "Onkologie" in slots["SPECIALTY_TAKEAWAY"]
     assert slots["SPECIALTY_CHART"].startswith("<svg")
     assert slots["SPECIALTY_TABLE"].startswith("<table")
+
+
+def test_the_specialty_slots_carry_the_german_name_not_the_key(slots):
+    """`Oncology` is the key the cleaner matches on; a reader sees `Onkologie`.
+
+    The key has to stay English — `SPECIALTY_SYNONYMS` looks rows up by it and five
+    test modules pin it — so the translation happens at this boundary, on the label.
+    """
+    assert "Onkologie" in slots["SPECIALTY_TABLE"]
+    assert ">Oncology<" not in slots["SPECIALTY_TABLE"]
 
 
 def test_a_takeaway_emphasises_the_values_it_names(slots):
@@ -272,7 +282,7 @@ def test_an_empty_dataset_still_builds_a_report():
     assert built["KPI_INTERACTIONS"] == "0"
     assert built["KPI_AVG_ENGAGEMENT"] == "—"
     assert built["CHANNEL_CHART"] == ""
-    assert built["PERIOD_LABEL"] == "No period"
+    assert built["PERIOD_LABEL"] == "Kein Zeitraum"
 
 
 # --- the document -------------------------------------------------------------
@@ -301,12 +311,31 @@ def test_document_hoists_the_stylesheet_out_of_the_body(slots):
     assert "<style>" not in body
 
 
-def test_document_declares_the_theme_for_the_os_and_for_the_toggle(slots):
-    """Both scopes, or a viewer's explicit choice loses to the OS setting."""
+def test_document_speaks_german(slots):
+    """A German page claiming `lang="en"` gets an English screen-reader voice."""
     page = report.document(slots, report.load_template())
 
-    assert "prefers-color-scheme: dark" in page
-    assert '[data-theme="dark"]' in page
+    assert '<html lang="de">' in page
+
+
+def test_the_shell_promises_exactly_the_themes_the_page_can_paint(slots):
+    """`color-scheme` is what the browser paints form controls and scrollbars with.
+
+    Promising `light dark` on a page that only paints light hands the reader a dark
+    scrollbar over a light page; withholding it from a page that does paint dark does
+    the reverse. Which one is true is the design's decision, so the shell has to ask
+    the template rather than assume — and this holds for both shipped templates.
+    """
+    page = report.document(slots, report.load_template())
+    paints_dark = "prefers-color-scheme: dark" in page or '[data-theme="dark"]' in page
+
+    assert ('content="light dark"' in page) is paints_dark
+
+    for name in ("report.html", "design-template.html"):
+        template = report.load_template(name)
+        built = report.document(slots, template)
+        dark = "prefers-color-scheme: dark" in built or '[data-theme="dark"]' in built
+        assert ('content="light dark"' in built) is dark, name
 
 
 def test_document_leaves_no_unfilled_slot(slots):

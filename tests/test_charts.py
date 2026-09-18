@@ -60,15 +60,19 @@ def test_channel_token_is_stable_for_every_canonical_channel():
     assert len(set(tokens)) == len(tokens)
 
 
-def test_no_chart_emits_a_literal_colour(sample):
-    """A hex in the output would survive a design swap and look wrong."""
-    rendered = (
-        charts.channel_bars(metrics.channel_mix(sample))
+def every_chart(sample) -> str:
+    """All four charts on one page, so a rule is checked against the whole set."""
+    return (
+        charts.hero_trend(metrics.monthly_trend(sample))
+        + charts.channel_bars(metrics.channel_mix(sample))
         + charts.monthly_columns(metrics.monthly_trend(sample))
         + charts.specialty_heatmap(metrics.specialty_matrix(sample))
     )
 
-    assert "#" not in rendered
+
+def test_no_chart_emits_a_literal_colour(sample):
+    """A hex in the output would survive a design swap and look wrong."""
+    assert "#" not in every_chart(sample)
 
 
 def test_colour_is_never_a_presentation_attribute(sample):
@@ -85,19 +89,122 @@ def test_text_never_wears_a_series_colour(sample):
     The one fill a text element may carry is an ink: a colour chosen for readability on
     the surface behind it, which says nothing about which series it belongs to.
     """
-    rendered = (
-        charts.channel_bars(metrics.channel_mix(sample))
-        + charts.monthly_columns(metrics.monthly_trend(sample))
-        + charts.specialty_heatmap(metrics.specialty_matrix(sample))
-    )
     painted = [
         el.get("style")
-        for el in parse(rendered).iter("text")
+        for el in parse(every_chart(sample)).iter("text")
         if (el.get("style") or "").startswith("fill:var(")
     ]
 
     assert painted, "the heatmap's values would render black with no ink at all"
     assert all(style.endswith("-ink)") for style in painted), painted
+
+
+# --- the magnitude ramp -------------------------------------------------------
+
+
+def test_the_magnitude_ramp_has_seven_steps():
+    """Seven, not five: the delivered design's greens were measured against the
+    readability floor and the one step with no ink that clears 4.5:1 was dropped, so
+    the ramp has to span the same light→dark range in the steps that remain."""
+    assert len(charts.SEQUENTIAL) == 7
+
+
+def test_every_step_of_the_ramp_is_its_own_token():
+    """A repeated step is a step that never appears — the bottom of the range would
+    silently collapse into the one above it."""
+    assert len(set(charts.SEQUENTIAL)) == len(charts.SEQUENTIAL)
+    assert [token for token in charts.SEQUENTIAL] == [
+        f"seq-{index}" for index in range(1, len(charts.SEQUENTIAL) + 1)
+    ]
+
+
+# --- 0. the hero --------------------------------------------------------------
+
+
+def test_hero_trend_renders_one_point_per_month(sample):
+    """SAMPLE runs März–Mai, so the hero carries three points — the same months the
+    trend chart below it stacks by channel."""
+    root = parse(charts.hero_trend(metrics.monthly_trend(sample)))
+
+    assert len([el for el in marks(root) if "point" in (el.get("class") or "").split()]) == 3
+
+
+def test_hero_trend_on_no_months_is_empty_and_parses():
+    root = parse(charts.hero_trend(metrics.monthly_trend([])))
+
+    assert marks(root) == []
+
+
+def test_hero_trend_labels_every_month(sample):
+    root = parse(charts.hero_trend(metrics.monthly_trend(sample)))
+    labels = [el.text for el in root.iter("text")]
+
+    assert [label for label in labels if label in {"Mär", "Apr", "Mai"}] == [
+        "Mär",
+        "Apr",
+        "Mai",
+    ]
+
+
+def test_hero_trend_carries_the_numbers_in_a_tooltip(sample):
+    root = parse(charts.hero_trend(metrics.monthly_trend(sample)))
+    tips = [el.get("data-tip") for el in marks(root)]
+
+    assert any(tip and tip.startswith("Mär 2026: 3") for tip in tips)
+
+
+def test_hero_trend_plots_the_monthly_totals_the_trend_chart_also_carries(sample):
+    """The hero is not a separate series — it is the same total, read at a glance.
+
+    A hero fed by anything else could contradict the analysis under it, and the reader
+    has no way to tell which of the two is the report.
+    """
+    trend = metrics.monthly_trend(sample)
+    root = parse(charts.hero_trend(trend))
+    points = {
+        el.get("data-month"): float(el.get("data-value"))
+        for el in marks(root)
+        if "point" in (el.get("class") or "").split()
+    }
+
+    assert points == {month.month: float(month.total) for month in trend.months}
+
+
+def test_hero_trend_wears_the_magnitude_ramp_not_a_channel_colour(sample):
+    """One series of totals has no identity to encode, so it must not borrow a
+    channel's slot — the reader would read the hero as that channel."""
+    root = parse(charts.hero_trend(metrics.monthly_trend(sample)))
+
+    assert fills(root)
+    assert all(token.startswith("seq-") for token in fills(root))
+
+
+def test_hero_trend_keeps_every_point_inside_the_canvas(sample):
+    root = parse(charts.hero_trend(metrics.monthly_trend(sample)))
+    xs = [float(el.get("cx")) for el in marks(root)]
+    ys = [float(el.get("cy")) for el in marks(root)]
+
+    assert min(xs) >= 0 and max(xs) <= charts.WIDTH
+    assert min(ys) >= 0 and max(ys) <= charts.HERO_HEIGHT
+
+
+def test_hero_trend_on_one_month_still_draws_its_point():
+    """A single-month export is a line of one point, which is not a line at all —
+    the marker is the chart, and dropping it would render an empty hero."""
+    trend = metrics.MonthlyTrend(
+        months=(
+            metrics.MonthStat(
+                month="2026-05", label="Mai", label_full="Mai 2026",
+                counts={"F2F Call": 5}, total=5,
+            ),
+        ),
+        channels=("F2F Call",),
+        max_total=5,
+    )
+    root = parse(charts.hero_trend(trend))
+
+    assert len(marks(root)) == 1
+    assert "5" in [el.text for el in root.iter("text")]
 
 
 # --- 1. channel bars ----------------------------------------------------------
@@ -146,7 +253,7 @@ def test_channel_bars_writes_the_value_at_the_end_of_each_bar(sample):
     root = parse(charts.channel_bars(metrics.channel_mix(sample)))
     labels = [el.text for el in root.iter("text")]
 
-    assert "3 · 37.5 %" in labels, "volume and share, at the data end"
+    assert "3 · 37,5 %" in labels, "volume and share, at the data end"
     assert "2 · 25 %" in labels
 
 
@@ -173,7 +280,7 @@ def test_channel_bars_scales_to_the_axis_top_not_to_the_largest_bar():
     """
     mix = metrics.ChannelMix(
         rows=(metrics.ChannelStat(channel="F2F Call", interactions=48, hcps=36,
-                                  avg_engagement=76.8, share=100.0),),
+                                  avg_engagement=76.8, avg_duration=30.0, share=100.0),),
         total=48,
     )
     root = parse(charts.channel_bars(mix))
@@ -184,16 +291,16 @@ def test_channel_bars_scales_to_the_axis_top_not_to_the_largest_bar():
 
 
 def test_channel_bars_rounds_a_share_the_same_way_the_table_does():
-    """17.39 % on the mark and 17.4 % in the table would be the same number twice."""
+    """17,39 % on the mark and 17,4 % in the table would be the same number twice."""
     mix = metrics.ChannelMix(
         rows=(metrics.ChannelStat(channel="Web", interactions=4, hcps=2,
-                                  avg_engagement=None, share=17.391),),
+                                  avg_engagement=None, avg_duration=None, share=17.391),),
         total=23,
     )
     labels = [el.text for el in parse(charts.channel_bars(mix)).iter("text")]
 
-    assert any("17.4 %" in label for label in labels if label)
-    assert not any("17.39" in label for label in labels if label)
+    assert any("17,4 %" in label for label in labels if label)
+    assert not any("17,39" in label for label in labels if label)
 
 
 def test_the_right_margin_fits_a_value_label():
@@ -207,7 +314,7 @@ def test_the_right_margin_fits_a_value_label():
 
 
 def test_monthly_columns_renders_one_segment_per_present_channel_month(sample):
-    """SAMPLE: Mar has 2 channels, Apr 2, May 1 — five segments, not 21."""
+    """SAMPLE: Mär has 2 channels, Apr 2, Mai 1 — five segments, not 21."""
     root = parse(charts.monthly_columns(metrics.monthly_trend(sample)))
 
     assert len(marks(root)) == 5
@@ -217,10 +324,10 @@ def test_monthly_columns_labels_every_month(sample):
     root = parse(charts.monthly_columns(metrics.monthly_trend(sample)))
     labels = [el.text for el in root.iter("text")]
 
-    assert [label for label in labels if label in {"Mar", "Apr", "May"}] == [
-        "Mar",
+    assert [label for label in labels if label in {"Mär", "Apr", "Mai"}] == [
+        "Mär",
         "Apr",
-        "May",
+        "Mai",
     ]
 
 
@@ -294,7 +401,7 @@ def test_monthly_columns_carries_the_numbers_in_a_tooltip(sample):
     root = parse(charts.monthly_columns(metrics.monthly_trend(sample)))
     tips = [el.get("data-tip") for el in marks(root)]
 
-    assert any(tip and "Mar" in tip and "F2F Call" in tip for tip in tips)
+    assert any(tip and "Mär" in tip and "F2F Call" in tip for tip in tips)
 
 
 def test_monthly_columns_on_empty_input_is_empty_and_parses():
@@ -310,7 +417,12 @@ def test_monthly_columns_keeps_every_tick_inside_the_plot():
     viewBox, where its label renders clipped or invisible.
     """
     trend = metrics.MonthlyTrend(
-        months=(metrics.MonthStat(month="2026-05", label="May", counts={"F2F Call": 45}, total=45),),
+        months=(
+            metrics.MonthStat(
+                month="2026-05", label="Mai", label_full="Mai 2026",
+                counts={"F2F Call": 45}, total=45,
+            ),
+        ),
         channels=("F2F Call",),
         max_total=45,
     )
@@ -359,9 +471,42 @@ def test_heatmap_labels_the_rows_and_columns(sample):
     root = parse(charts.specialty_heatmap(metrics.specialty_matrix(sample)))
     labels = [el.text for el in root.iter("text")]
 
-    assert "Oncology" in labels
-    assert "Cardiology" in labels
+    assert "Onkologie" in labels
+    assert "Kardiologie" in labels
     assert "F2F" in labels
+
+
+def test_heatmap_rows_are_labelled_in_german_not_by_their_key(sample):
+    """`Cardiology` is what the cleaner matches on; a reader is shown `Kardiologie`."""
+    root = parse(charts.specialty_heatmap(metrics.specialty_matrix(sample)))
+    labels = [el.text for el in root.iter("text")]
+
+    assert "Oncology" not in labels
+    assert "General Medicine" not in labels
+
+
+def test_heatmap_cells_are_rounded_like_the_design(sample):
+    """The delivered design rounds every cell. `rx` is geometry, so it is not a
+    design token — but a cell that lost it would read as a different chart."""
+    root = parse(charts.specialty_heatmap(metrics.specialty_matrix(sample)))
+
+    assert all(el.get("rx") == "4" for el in marks(root))
+
+
+def test_the_heatmap_gutter_fits_its_longest_label():
+    """A right-anchored label grows *leftward*, and the longest German specialty name
+    is `Allgemeinmedizin`. Too narrow a gutter pushes it past the left of the canvas,
+    where the viewBox clips it and the row loses its name entirely.
+
+    The real measurement is taken by looking at the rendered page; this is the
+    regression floor that stops someone narrowing the gutter back to the 110 that fit
+    `General Medicine`, on the estimate of a 12px glyph advancing about 7px.
+    """
+    longest = max(len(schema.specialty_label(name)) for name in schema.SPECIALTIES)
+    label_start = charts.HEATMAP_GUTTER - charts.HEATMAP_LABEL_GAP - longest * 7
+
+    assert longest == len("Allgemeinmedizin")
+    assert label_start >= 0, f"the longest label would start at x={label_start}"
 
 
 def test_heatmap_puts_the_two_extremes_at_the_ends_of_the_ramp(sample):

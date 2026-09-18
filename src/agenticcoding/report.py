@@ -28,11 +28,6 @@ from pathlib import Path
 from . import charts, clean, metrics, schema, svgcore
 from .render import render
 
-_MONTHS = (
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-)
-
 # The fragment's leading `<title>` and `<style>` are hoisted into `<head>` so the
 # written file is a valid document. The published page gets the same treatment from
 # the artifact host, which is why the template itself stays a fragment.
@@ -41,17 +36,34 @@ _LEADING = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# A template declares dark mode by redefining tokens under one of these. The shell
+# reads the rendered page for them rather than guessing, because the two shipped
+# templates answer differently: `report.html` is a committed single-theme design and
+# `design-template.html` is theme-aware.
+_DARK_SCOPE = re.compile(r'\[data-theme="dark"\]|prefers-color-scheme:\s*dark')
+
 _SHELL = """<!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="{scheme}">
 {head}</head>
 <body>
 {body}</body>
 </html>
 """
+
+
+def _color_scheme(page: str) -> str:
+    """What the browser may paint scrollbars and form controls with.
+
+    `light dark` on a page that only paints light hands the reader a dark scrollbar
+    over a light page. Which themes exist is the design's decision, so the shell asks
+    the page instead of assuming — and it asks the *rendered* page, so a `[data-theme]`
+    mentioned in a comment cannot talk it into a theme that is not there.
+    """
+    return "light dark" if _DARK_SCOPE.search(page) else "light"
 
 
 # --- the template -------------------------------------------------------------
@@ -92,7 +104,7 @@ def document(slots: dict[str, str], template: str) -> str:
     """
     fragment = render(template, slots)
     head, rest = _split_head(fragment)
-    return _SHELL.format(head=head, body=rest)
+    return _SHELL.format(head=head, body=rest, scheme=_color_scheme(fragment))
 
 
 def _split_head(fragment: str) -> tuple[str, str]:
@@ -117,18 +129,21 @@ def _share(value: float | None, decimals: int = 1) -> str:
 
 
 def _period(rows: Sequence[schema.Interaction]) -> str:
-    """The span the data covers, as prose. Never guessed — read off the rows."""
+    """The span the data covers, as prose. Never guessed — read off the rows.
+
+    The month names come from `schema.MONTHS_LONG`, never `strftime("%B")`: the latter
+    resolves against the process locale, so the same CSV would render a different
+    report on a German machine than on an English one.
+    """
     if not rows:
-        return "No period"
+        return "Kein Zeitraum"
     first, last = min(row.date for row in rows), max(row.date for row in rows)
+    name = schema.MONTHS_LONG
     if (first.year, first.month) == (last.year, last.month):
-        return f"{_MONTHS[first.month - 1]} {first.year}"
+        return f"{name[first.month - 1]} {first.year}"
     if first.year == last.year:
-        return f"{_MONTHS[first.month - 1]} – {_MONTHS[last.month - 1]} {first.year}"
-    return (
-        f"{_MONTHS[first.month - 1]} {first.year} – "
-        f"{_MONTHS[last.month - 1]} {last.year}"
-    )
+        return f"{name[first.month - 1]} – {name[last.month - 1]} {first.year}"
+    return f"{name[first.month - 1]} {first.year} – {name[last.month - 1]} {last.year}"
 
 
 def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
@@ -154,12 +169,18 @@ def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
 
 
 def _row_means(matrix: metrics.SpecialtyMatrix) -> list[tuple[float, str]]:
-    """Each specialty's mean over its present cells, best first."""
+    """Each specialty's mean over its present cells, best first.
+
+    Carries `row.label` rather than `row.specialty`: the caller puts this straight into
+    a sentence a reader sees, and the key is the cleaner's matching vocabulary, not a
+    name. An unrecognized specialty has no translation, and `specialty_label` falls
+    back to the key for exactly that case.
+    """
     scored = []
     for row in matrix.rows:
         values = [value for value in row.cells.values() if value is not None]
         if values:
-            scored.append((statistics.fmean(values), row.specialty))
+            scored.append((statistics.fmean(values), row.label))
     return sorted(scored, key=lambda pair: -pair[0])
 
 
@@ -176,9 +197,12 @@ def _bold(text: str) -> str:
     return f"<b>{svgcore.esc(text)}</b>"
 
 
+_NO_INTERACTIONS = "In diesem Zeitraum wurden keine Interaktionen erfasst."
+
+
 def _channel_takeaway(mix: metrics.ChannelMix) -> str:
     if not mix.rows:
-        return "No interactions were recorded in this period."
+        return _NO_INTERACTIONS
     leader = mix.rows[0]
     best = max(
         (row for row in mix.rows if row.avg_engagement is not None),
@@ -186,64 +210,71 @@ def _channel_takeaway(mix: metrics.ChannelMix) -> str:
         default=None,
     )
     sentence = (
-        f"{_bold(leader.channel)} carries the most activity — {leader.interactions} "
-        f"interactions, {_share(leader.share)} of the total"
+        f"{_bold(leader.channel)} trägt die meiste Aktivität — {leader.interactions} "
+        f"Interaktionen, {_share(leader.share)} des Gesamtvolumens"
     )
     if best is not None:
-        # Name the channel whenever it is not the one already named. "— and posts the
-        # highest average engagement" reads as a fact about `leader`, so an unnamed
-        # `best` would credit the volume leader with another channel's score.
-        subject = "— and posts" if best is leader else f"— and {_bold(best.channel)} posts"
-        sentence += f" {subject} the highest average engagement, at {svgcore.fmt(best.avg_engagement)}"
+        # Name the channel whenever it is not the one already named. "— und hat das
+        # höchste durchschnittliche Engagement" reads as a fact about `leader`, so an
+        # unnamed `best` would credit the volume leader with another channel's score.
+        subject = "— und hat" if best is leader else f"— und {_bold(best.channel)} hat"
+        sentence += f" {subject} das höchste durchschnittliche Engagement: {svgcore.fmt(best.avg_engagement)}"
     return sentence + "."
 
 
 def _trend_takeaway(trend: metrics.MonthlyTrend) -> str:
     if not trend.months:
-        return "No interactions were recorded in this period."
+        return _NO_INTERACTIONS
     peak = max(trend.months, key=lambda month: month.total)
     last = trend.months[-1]
+    # `label_full` ("Mär 2026"), not the axis's three-letter `label`: a sentence has
+    # room for the year, and a peak without one is a fact about an unknown period.
     if len(trend.months) == 1:
-        return f"All {last.total} interactions fall in {_bold(last.label)}."
+        return f"Alle {last.total} Interaktionen fallen in {_bold(last.label_full)}."
     return (
-        f"Volume peaked in {_bold(peak.label)} at {peak.total} interactions and closed "
-        f"at {last.total} in {last.label}."
+        f"Das Volumen erreichte in {_bold(peak.label_full)} mit {peak.total} Interaktionen "
+        f"seinen Höhepunkt und schloss mit {last.total} in {last.label_full}."
     )
 
 
 def _specialty_takeaway(matrix: metrics.SpecialtyMatrix) -> str:
     ranked = _row_means(matrix)
     if not ranked:
-        return "No specialty had a scored interaction in this period."
+        return "In diesem Zeitraum hatte keine Fachrichtung eine bewertete Interaktion."
     if len(ranked) == 1:
-        return f"{_bold(ranked[0][1])} is the only specialty with scored interactions."
+        return f"{_bold(ranked[0][1])} ist die einzige Fachrichtung mit bewerteten Interaktionen."
     (top_value, top_name), (bottom_value, bottom_name) = ranked[0], ranked[-1]
     return (
-        f"{_bold(top_name)} shows the strongest mean engagement at "
-        f"{svgcore.fmt(top_value)}, ahead of {bottom_name} at {svgcore.fmt(bottom_value)}."
+        f"{_bold(top_name)} zeigt das stärkste mittlere Engagement mit "
+        f"{svgcore.fmt(top_value)}, vor {bottom_name} mit {svgcore.fmt(bottom_value)}."
     )
 
 
 def _hero_tagline(kpis: metrics.Kpis, period: str) -> str:
-    """The sentence the page opens with, carrying its own two headline counts."""
+    """The sentence the page opens with, carrying its own two headline counts.
+
+    `HCP` stays untranslated, like the channel names: it is the term the industry
+    writes in German-language multichannel reporting, and inventing a translation
+    would make the report harder to read for the people who use it.
+    """
     return (
-        f"{kpis.interactions} interactions with {kpis.hcps} health care professionals "
-        f"from {period} — cleaned, analysed, and accounted for."
+        f"{kpis.interactions} Interaktionen mit {kpis.hcps} HCPs · {period} — "
+        f"bereinigt, ausgewertet, nachvollziehbar."
     )
 
 
 def _hcps_note(kpis: metrics.Kpis) -> str:
     """Interactions per HCP: the reach figure made comparable across periods."""
     if not kpis.hcps:
-        return "no HCP recorded"
-    return f"{svgcore.fmt(kpis.interactions / kpis.hcps, 1)} interactions per HCP"
+        return "kein HCP erfasst"
+    return f"{svgcore.fmt(kpis.interactions / kpis.hcps, 1)} Interaktionen pro HCP"
 
 
 def _click_note(kpis: metrics.Kpis) -> str:
     """Clicks over opens — an unopened email cannot be clicked, so it is not counted."""
     if kpis.email_click_rate is None:
-        return "no opens recorded"
-    return f"{svgcore.share(kpis.email_click_rate, 0)} of opens clicked"
+        return "keine Öffnungen erfasst"
+    return f"{svgcore.share(kpis.email_click_rate, 0)} der Öffnungen angeklickt"
 
 
 # --- the slot dictionary ------------------------------------------------------
@@ -274,9 +305,14 @@ def build_slots(
         "GENERATED_AT": generated_at,
         "SOURCE_FILE": source_file,
         "HERO_TAGLINE": _hero_tagline(kpis, period),
+        # Fed by the same `monthly_trend` the Verlauf card stacks by channel. The
+        # delivered design hard-codes 30/27/45/34/23/25 here, which is a second set of
+        # numbers that agrees with nothing; a hero that contradicts the chart below it
+        # is worse than no hero.
+        "HERO_CHART": charts.hero_trend(trend),
         # the KPI strip
         "KPI_INTERACTIONS": _count(kpis.interactions),
-        "KPI_INTERACTIONS_NOTE": f"from {_count(quality.rows_in)} raw rows",
+        "KPI_INTERACTIONS_NOTE": f"aus {_count(quality.rows_in)} Rohzeilen",
         "KPI_HCPS": _count(kpis.hcps),
         "KPI_HCPS_NOTE": _hcps_note(kpis),
         "KPI_AVG_ENGAGEMENT": svgcore.fmt(kpis.avg_engagement),
@@ -284,29 +320,30 @@ def build_slots(
         "KPI_EMAIL_OPEN_RATE_NOTE": _click_note(kpis),
         # data quality
         "QUALITY_HEADLINE": (
-            f"{quality.rows_in} raw rows → {quality.rows_out} analysable "
+            f"{quality.rows_in} Rohzeilen → {quality.rows_out} auswertbare Interaktionen "
             f"({svgcore.fmt(quality.analyzable_share, 0)} %)"
         ),
         "QUALITY_TABLE": _table(
-            ("Stage", "Rows"),
+            ("Schritt", "Betroffene Zeilen"),
             [(note.label, _count(note.count)) for note in quality.notes],
         ),
         "MISSING_SCORE_NOTE": (
-            f"Engagement score is missing on {missing_scores} of {len(data)} interactions. "
-            f"Those rows count toward volume and are excluded from every average — "
-            f"nothing is imputed."
+            f"Bei {missing_scores} von {len(data)} Interaktionen fehlt der "
+            f"Engagement-Score. Diese Zeilen zählen zum Volumen und bleiben aus jedem "
+            f"Mittelwert heraus — es wird nichts geschätzt."
         ),
         # 1 · channel mix
         "CHANNEL_TAKEAWAY": _channel_takeaway(mix),
         "CHANNEL_CHART": charts.channel_bars(mix),
         "CHANNEL_TABLE": _table(
-            ("Channel", "Interactions", "Share", "HCPs", "Avg engagement"),
+            ("Kanal", "Interaktionen", "Anteil", "HCPs", "Ø Dauer (min)", "Ø Engagement"),
             [
                 (
                     row.channel,
                     _count(row.interactions),
                     _share(row.share),
                     _count(row.hcps),
+                    svgcore.fmt(row.avg_duration, 0),
                     svgcore.fmt(row.avg_engagement),
                 )
                 for row in mix.rows
@@ -317,10 +354,12 @@ def build_slots(
         "TREND_LEGEND": charts.trend_legend(trend),
         "TREND_CHART": charts.monthly_columns(trend),
         "TREND_TABLE": _table(
-            ("Month", "Total", *trend.channels),
+            # Short names, as the design sets them: five channel columns at the full
+            # "Screen-to-Screen Call" would be the widest thing in the table.
+            ("Monat", "Gesamt", *[schema.CHANNEL_SHORT.get(c, c) for c in trend.channels]),
             [
                 (
-                    month.label,
+                    month.label_full,
                     _count(month.total),
                     *[_count(month.counts.get(channel, 0)) for channel in trend.channels],
                 )
@@ -331,10 +370,10 @@ def build_slots(
         "SPECIALTY_TAKEAWAY": _specialty_takeaway(matrix),
         "SPECIALTY_CHART": charts.specialty_heatmap(matrix),
         "SPECIALTY_TABLE": _table(
-            ("Specialty", *matrix.channels),
+            ("Fachrichtung", *matrix.channels),
             [
                 (
-                    row.specialty,
+                    row.label,
                     *[
                         svgcore.fmt(row.cells.get(channel))
                         for channel in matrix.channels

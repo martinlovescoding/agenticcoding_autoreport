@@ -1,8 +1,11 @@
 """The three analyses and the KPI block.
 
 Each function takes cleaned `Interaction` rows and returns a frozen dataclass that
-carries *numbers only* — no labels, no colours, no HTML. The template owns all
-presentation, so these values can be unit-tested by hand and re-used by any design.
+carries *numbers and display labels only* — no colours, no HTML, no markup. Where a
+value needs a human-readable name (a month, a specialty) the dataclass carries it as
+a `label` field beside the canonical key, resolved from `schema`'s German tables. The
+template still owns the layout, so these values can be unit-tested by hand and
+re-used by any design.
 
 Two rules hold everywhere:
 
@@ -52,6 +55,7 @@ class ChannelStat:
     interactions: int
     hcps: int
     avg_engagement: float | None
+    avg_duration: float | None
     share: float
 
 
@@ -75,6 +79,7 @@ def channel_mix(rows: Iterable[Interaction]) -> ChannelMix:
             interactions=len(group),
             hcps=len({row.hcp_id for row in group if row.hcp_id}),
             avg_engagement=_mean(row.engagement_score for row in group),
+            avg_duration=_mean(row.duration_min for row in group),
             share=100.0 * len(group) / total if total else 0.0,
         )
         for channel, group in grouped.items()
@@ -96,6 +101,7 @@ class MonthStat:
 
     month: str
     label: str
+    label_full: str
     counts: dict[str, int]
     total: int
 
@@ -110,18 +116,20 @@ class MonthlyTrend:
 def monthly_trend(rows: Iterable[Interaction]) -> MonthlyTrend:
     """Interactions per calendar month, broken down by channel."""
     grouped: dict[str, dict[str, int]] = {}
-    labels: dict[str, str] = {}
+    labels: dict[str, tuple[str, str]] = {}
     for row in rows:
         grouped.setdefault(row.month, {})
         grouped[row.month][row.channel] = grouped[row.month].get(row.channel, 0) + 1
-        labels.setdefault(row.month, row.month_label)
+        # Short for the axis, long for the table row underneath it.
+        labels.setdefault(row.month, (row.month_label, row.month_label_full))
 
     channels = _ordered({row.channel for row in rows}, schema.CHANNELS)
 
     months = tuple(
         MonthStat(
             month=month,
-            label=labels[month],
+            label=labels[month][0],
+            label_full=labels[month][1],
             # Only the channels that actually occurred, re-keyed into channel order
             # so the stacked segments are stable. A month that had no Web activity
             # has no Web key — zero-padding is the chart's job, not the data's.
@@ -150,6 +158,7 @@ class SpecialtyRow:
     """One specialty across every channel; `None` where nothing happened."""
 
     specialty: str
+    label: str
     cells: dict[str, float | None]
 
 
@@ -175,6 +184,7 @@ def specialty_matrix(rows: Iterable[Interaction]) -> SpecialtyMatrix:
     matrix = tuple(
         SpecialtyRow(
             specialty=specialty,
+            label=schema.specialty_label(specialty),
             cells={channel: _mean(grouped[specialty].get(channel, ())) for channel in channels},
         )
         for specialty in specialties

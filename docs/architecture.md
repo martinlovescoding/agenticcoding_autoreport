@@ -81,15 +81,15 @@ reading the template's own CSS.
 
 | Module | Lines | Imports | Responsibility |
 |---|---:|---|---|
-| `schema.py` | 201 | — | The vocabulary: 7 channels, specialties, synonym tables, plausibility thresholds, the frozen `Interaction` row. |
-| `svgcore.py` | 177 | — | Chart primitives: `esc`, `linear`, `nice_step`, `ticks`, `fmt`, `share`, `element`, `paint`. No chart knowledge. |
+| `schema.py` | 250 | — | The vocabulary: 7 channels, specialties, synonym tables, plausibility thresholds, the frozen `Interaction` row, and the display label tables (`MONTHS_SHORT`, `SPECIALTY_LABELS`). |
+| `svgcore.py` | 189 | — | Chart primitives: `esc`, `linear`, `nice_step`, `ticks`, `number`, `fmt`, `share`, `element`, `paint`. No chart knowledge. |
 | `clean.py` | 309 | `schema` | The ordered cleaning pipeline, per-stage counters, `QualityReport`, CSV read/write. |
 | `generate.py` | 297 | `schema` | A synthetic, seed-reproducible, deliberately dirty export. A stand-in for a real one. |
-| `metrics.py` | 224 | `schema` | Aggregation: `channel_mix`, `monthly_trend`, `specialty_matrix`, `kpis`. Pure functions over rows. |
+| `metrics.py` | 234 | `schema` | Aggregation: `channel_mix`, `monthly_trend`, `specialty_matrix`, `kpis`. Pure functions over rows. |
 | `render.py` | 74 | `svgcore` | Slot substitution: the two sigils, comment stripping, `KeyError` on a missing slot. |
-| `charts.py` | 327 | `metrics` `schema` `svgcore` | Three charts as SVG strings. Names colour tokens, never colours. |
-| `report.py` | 346 | `charts` `clean` `metrics` `render` `schema` `svgcore` | The view model: metrics → slots. Also the takeaways, the table twins and the page shell. |
-| `cli.py` | 131 | `clean` `generate` `report` | `generate` and `report`, argument parsing, exit codes. |
+| `charts.py` | 443 | `metrics` `schema` `svgcore` | Four charts as SVG strings: the hero monthly total, then one per analysis. Names colour tokens, never colours. |
+| `report.py` | 385 | `charts` `clean` `metrics` `render` `schema` `svgcore` | The view model: metrics → slots. Also the takeaways, the table twins and the page shell. |
+| `cli.py` | 134 | `clean` `generate` `report` | `generate` and `report`, argument parsing, exit codes. |
 | `__main__.py` | 8 | `cli` | `python -m agenticcoding`. |
 
 The dependency graph is a DAG with four clean layers:
@@ -152,19 +152,37 @@ defines what `--ch-3` is. There are two families:
 | Family | Job | Rule |
 |---|---|---|
 | `--ch-1` … `--ch-7` | **identity** — one per channel | Fixed order, in schema order. Colour follows the entity, never the rank: `ch-4` is Rep Email wherever it ranks, so a change in position never repaints the survivors. |
-| `--seq-1` … `--seq-5` | **magnitude** — mean engagement | One hue, light to dark. Never the categorical slots. Each step carries a `-ink` token for the text inside its own cell. |
+| `--seq-1` … `--seq-7` | **magnitude** — mean engagement | One hue, light to dark. Never the categorical slots. Each step carries a `-ink` token for the text inside its own cell. |
 
 Text never wears a series colour. A label's fill is only ever an `-ink` token, chosen for
 readability against the surface behind it, which is why the ink is not inherited from the
 design's palette — the design's greys were measurably below the 4.5:1 body-text floor.
+The same reasoning re-points the text tokens inside `.panel`: the page's `--text-primary`
+on the dark green ground is 1.2:1, so the panel states its own ink once and every element
+inside it inherits a readable default.
 
-**Three theme states have to resolve, not two.** The bare `:root` block holds the
-complete light palette, because an unstamped document is what most viewers see and only
-`prefers-color-scheme` separates light from dark. The dark palette is then declared
-twice — under `@media (prefers-color-scheme: dark)` guarded as
-`:root:not([data-theme="light"])`, and again under `:root[data-theme="dark"]` — so an
-explicit choice beats the system in both directions. Dark is *selected*, not flipped: it
-has its own step values, validated against the dark surface.
+**A theme is declared, not implied.** Two shapes are legal, and both are checked:
+
+- **Three states** (the starter's shape). The bare `:root` block holds the complete light
+  palette, because an unstamped document is what most viewers see and only
+  `prefers-color-scheme` separates light from dark. The dark palette is then declared
+  twice — under `@media (prefers-color-scheme: dark)` guarded as
+  `:root:not([data-theme="light"])`, and again under `:root[data-theme="dark"]` — so an
+  explicit choice beats the system in both directions. Dark is *selected*, not flipped: it
+  has its own step values, validated against the dark surface.
+- **One committed state** (the live design's shape). A design that deliberately commits to
+  a single look may declare no dark scope at all. Every check then reads it as light,
+  because that is the palette it paints in every viewer setting.
+
+Declaring *one* dark scope is the failure, and the only one: the OS preference and the
+explicit toggle are the same theme, so a page that answers one and not the other renders
+two different designs from one switch.
+
+**`color-scheme` follows the rendered page, not the design's intent.**
+`report.document` reads the rendered fragment back and emits `light dark` only if the page
+actually carries a dark scope. A light-only page that promises `light dark` hands the
+reader dark scrollbars and dark form controls over a light background — the promise and the
+paint disagree, and nothing else notices.
 
 ---
 
@@ -178,10 +196,10 @@ it.
 |---|---|---|---|
 | 1 | Every slot the template asks for is supplied, and every slot supplied is used | A renamed slot renders a hole or silently drops a value | `test_template_slots.py::test_every_slot_*` (both directions) |
 | 2 | A rendered report contains no `{{` | An unsubstituted slot is a visible artifact in the page | `test_rendering_the_template_leaves_no_sigils` |
-| 3 | Every palette token a chart names is defined by the template | `var(--ch-3)` with no definition renders **black**, in both themes | `test_the_template_defines_every_palette_slot_the_charts_name` |
+| 3 | Every palette token a chart names is defined by the template | `var(--ch-3)` with no definition renders **black**, in every theme the page declares | `test_the_template_defines_every_palette_slot_the_charts_name` |
 | 4 | Every class a chart emits has a rule | An unstyled label renders in the wrong ink | `test_the_template_styles_every_class_the_charts_emit` |
-| 5 | Both dark scopes declare the same tokens | A token one scope moves and the other does not leaves the toggle half-lit | `test_both_dark_scopes_declare_the_same_tokens` |
-| 6 | Every heatmap value clears 4.5:1 on the cell under it, both themes | The dark ramp is *reversed*, so an ink picked by ramp depth lands white-on-pale | `test_every_heatmap_value_is_legible_on_the_cell_under_it` |
+| 5 | A design declares both dark scopes or neither, and if both then identically | A token one scope moves and the other does not leaves the toggle half-lit; declaring one and not the other renders two designs from one switch. Declaring neither is a valid single-theme design, and every check then reads it as light — which is what it paints | `test_the_two_dark_scopes_agree_with_each_other` |
+| 6 | Every heatmap value clears 4.5:1 on the cell under it, in every theme | The dark ramp is *reversed*, so an ink picked by ramp depth lands white-on-pale | `test_every_heatmap_value_is_legible_on_the_cell_under_it` |
 | 7 | Every ramp step's ink is readable on its own cell | A dataset that does not span the ramp leaves high steps unchecked — found only by mutating step 4 | `test_every_step_of_the_ramp_is_readable_on_its_own_cell` |
 | 8 | Every ramp step has an ink token | A step with none falls back to unset `fill` and renders black | `test_every_step_of_the_ramp_has_an_ink_defined_for_it` |
 | 9 | Cleaning is idempotent; the counters account for every row | Re-cleaning cleaned data must change nothing, and no row may vanish unaccounted | `test_clean.py` (per-stage) |
@@ -190,8 +208,11 @@ it.
 | 12 | The rendered page makes no network request | The offline guarantee is the reason the charts are hand-built | `test_report_pages_the_generated_csv_without_network_references` |
 | 13 | The headline figure is the number of rows that survived cleaning | The obvious bug is printing the raw row count | `test_report_carries_the_cleaned_row_count_into_the_page` |
 | 14 | A template is reachable without the installed package | `uv_build` package data is not guaranteed to ship | `test_the_page_shell_is_reachable_without_the_installed_package` |
+| 15 | Every text token clears 4.5:1 on every surface the design declares | The README asserted it and nothing checked it, and it was false: the delivered design's muted grey is 4.16:1 on its own stone band | `test_every_text_token_is_readable_on_every_surface_the_design_declares` |
+| 16 | The accent, where it is used as text, is readable where it lands | A lime accent is 1.70:1 on white; used as link text on the page ground it is invisible, and the page looks fine | `test_where_the_accent_is_used_as_text_it_can_be_read` |
+| 17 | `color-scheme` promises exactly the themes the page can paint | `light dark` on a light-only page hands the reader dark scrollbars and dark form controls | `test_the_shell_promises_exactly_the_themes_the_page_can_paint` |
 
-Invariants 1–8 and 10–11 are checked against **both** templates — the live design and the
+Invariants 1–11 and 15–16 are checked against **both** templates — the live design and the
 design starter — so a design swap cannot drop out of the contract. That is deliberate:
 the starter is only worth handing over if it is complete, and a second, parallel set of
 checks for it would drift out of step with the first.
@@ -204,7 +225,7 @@ checks for it would drift out of step with the first.
 
 1. `schema.py` — add it to `CHANNELS`, add its short form to `CHANNEL_SHORT`, add every
    spelling an export might use to `CHANNEL_SYNONYMS`.
-2. The template — add a `--ch-8` token in all three theme scopes.
+2. The template — add a `--ch-8` token in every theme scope the design declares.
 3. Nothing else. The charts iterate the schema, so bars, stacks, the heatmap, all four
    tables and every count pick it up.
 
@@ -259,8 +280,8 @@ not finished until it is counted:
 | **A missing slot raises** | Failing loudly at build time beats a page that quietly lost its headline number. |
 | **Nothing is imputed** | A missing engagement score keeps its row in the volume and is excluded from every average. An implausible duration is set to nothing, not trimmed to a plausible lie. The data basis panel says so on the page. |
 | **`03/04/2026` reads as 3 April, documented** | Guessing per file would make the tool's output depend on an unstated assumption. An export that means 4 March is converted before it reaches the tool. |
-| **Dark mode is selected, not flipped** | Its steps come from the same ramps but were validated against the dark surface. A naive inversion is how you get light-mode hues on near-black. |
-| **The KPI band is a typographic device, not a theme** | In `report.html` the trend chart's card stays on the surface its palette was validated against rather than inverting with the band. Recorded in the README's known limitations, with the trade-off. |
+| **A theme is declared, not implied** | `design-template.html` carries all three theme states; `report.html` commits to light, as the delivered design does. Committing to one is allowed — but the page still paints its ground and every colour explicitly, and `color-scheme` follows the rendered page rather than a constant, so the promise and the paint cannot drift apart. |
+| **The hero chart sits on a card, not on the green panel** | A chart is drawn on the surface its palette was validated against. On the panel it would paint `--text-secondary` labels and a `--seq-6` line — both dark on dark. |
 | **The browser tests skip, they do not fail, without Chrome** | A missing browser is a gap in the development machine, not a defect in the page. |
 
 ---
@@ -269,9 +290,12 @@ not finished until it is counted:
 
 - **No filtering, drill-down or cross-chart selection.** A snapshot, not a dashboard.
 - **No persistence or server.** No database, no config file, no state between runs.
-- **No i18n layer.** English throughout, by decision. Channel synonyms accept German
-  spellings on input, which is a data concern rather than a UI one.
-- **No plugin or chart registry.** Three charts, each a function. A registry would be
+- **No i18n layer.** One document, one language: the report's visible text is German and
+  the CLI is English, both fixed in the source as literal strings and label tables. There
+  is no locale negotiation and no message catalogue, because a report whose text depends
+  on where it was generated is not reproducible. Channel synonyms accept German spellings
+  on input, which is a data concern rather than a UI one.
+- **No plugin or chart registry.** Four charts, each a function. A registry would be
   ceremony over a list.
 - **No format guessing.** Ambiguous dates follow one documented convention rather than a
   heuristic.
@@ -280,7 +304,8 @@ not finished until it is counted:
 
 ## 9 · Known limits
 
-The README carries the reader-facing ones, with the reasoning: the three channel hues
-below 3:1 contrast on the light surface and why that is permitted, the five-step
-approximation of a continuous range, the phone chart floor and its scroll trade-off, and
-the `03/04/2026` convention.
+The README carries the reader-facing ones, with the reasoning: the channel palette
+failing three of the validator's checks and why that is permitted, the seven-step
+approximation of a continuous range and its two palest steps, the phone chart floor and
+its scroll trade-off, the hero card, the replaced wordmark, and the `03/04/2026`
+convention.

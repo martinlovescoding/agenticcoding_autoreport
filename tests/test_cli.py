@@ -103,7 +103,20 @@ def test_report_carries_the_cleaned_row_count_into_the_page(tmp_path, raw_csv):
     assert len(kept) < quality.rows_in, "the fixture must lose rows, or the check proves nothing"
 
     text = re.sub(r"<[^>]+>", " ", out.read_text(encoding="utf-8"))
-    assert re.search(rf"\b{len(kept)}\b[\s\S]{{0,80}}?Interactions", text), text[:400]
+    assert re.search(rf"\b{len(kept)}\b[\s\S]{{0,80}}?Interaktionen", text), text[:400]
+
+
+def test_report_stamps_the_page_with_a_locale_independent_date(tmp_path, raw_csv):
+    """`strftime("%d %B %Y")` resolves the month name against the *process* locale.
+
+    The stamp is a line a reader sees, so "18 September 2026" on one machine and
+    "18 September 2026" in German only on a German machine is a report whose text
+    depends on where it was generated. A numeric stamp cannot.
+    """
+    out = tmp_path / "report.html"
+    cli.main(["report", "--input", raw_csv, "--out", str(out), "--as-of", "2026-09-18"])
+
+    assert "18.09.2026" in out.read_text(encoding="utf-8")
 
 
 def test_report_does_not_write_the_cleaned_csv_unless_asked(tmp_path, raw_csv):

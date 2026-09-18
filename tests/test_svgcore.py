@@ -177,14 +177,35 @@ def test_ticks_on_negative_or_invalid_input_do_not_crash():
 
 def test_fmt_trims_trailing_zeros():
     assert svgcore.fmt(70.0) == "70"
-    assert svgcore.fmt(0.5) == "0.5"
+    assert svgcore.fmt(0.5) == "0,5"
     assert svgcore.fmt(0.0) == "0"
 
 
 def test_fmt_honours_the_requested_precision():
-    assert svgcore.fmt(66.666, 1) == "66.7"
+    assert svgcore.fmt(66.666, 1) == "66,7"
     assert svgcore.fmt(66.666, 0) == "67"
-    assert svgcore.fmt(1.0 / 3.0, 2) == "0.33"
+    assert svgcore.fmt(1.0 / 3.0, 2) == "0,33"
+
+
+def test_fmt_never_leaves_a_bare_trailing_separator():
+    """The comma swap has to happen *after* the zeros are trimmed.
+
+    Swapping first turns `70.00` into `70,00`, and trimming zeros off the end of
+    that gives `70,` — a number that reads as broken on the page.
+    """
+    assert svgcore.fmt(70.0, 1) == "70"
+    assert svgcore.fmt(9.0, 2) == "9"
+
+
+def test_number_keeps_a_period_for_svg_geometry():
+    """Display numbers are German; coordinates are not.
+
+    `fmt` feeds `viewBox="0 0 720 236"` as well as the labels, and a `viewBox` of
+    `0 0 720 236,5` is not valid SVG — the browser drops the whole chart.
+    """
+    assert svgcore.number(236.5) == "236.5"
+    assert svgcore.number(720.0) == "720"
+    assert svgcore.number(0.25) == "0.25"
 
 
 def test_fmt_handles_a_missing_value():
@@ -192,14 +213,14 @@ def test_fmt_handles_a_missing_value():
 
 
 def test_share_carries_the_unit_and_trims_like_fmt():
-    """A label says `37.5 %`, not `37.5` and not `37.50 %`."""
-    assert svgcore.share(37.5) == "37.5 %"
+    """A label says `37,5 %`, not `37,5` and not `37,50 %`."""
+    assert svgcore.share(37.5) == "37,5 %"
     assert svgcore.share(100.0) == "100 %"
 
 
 def test_share_rounds_to_one_decimal_by_default():
     """The chart and the table twin both call this; 17.391 must land the same both places."""
-    assert svgcore.share(17.391) == "17.4 %"
+    assert svgcore.share(17.391) == "17,4 %"
 
 
 def test_share_takes_its_precision_from_the_caller():
