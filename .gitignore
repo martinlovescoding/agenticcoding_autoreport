@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# macOS
+.DS_Store
+
+# Generated cleaned data (opt-in via --write-clean)
+data/clean_activities.csv
