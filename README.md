@@ -121,18 +121,34 @@ the keys `report.py` supplies, in both directions, and re-derives the palette fr
 template's own CSS to check every heatmap value against the cell under it. A renamed slot
 or an unreadable ink fails a test instead of rendering a hole.
 
+**Starting a new design.** `templates/design-template.html` is a complete, restyleable
+starter — all 24 slots, every palette token, all three theme scopes — and the suite holds
+it to *the same* contract as the live design, so it cannot rot. Render it with the real
+data to see what it looks like:
+
+```python
+report.document(slots, report.load_template("design-template.html"))
+```
+
+`docs/architecture.md` has the shape of the system and which decisions are load-bearing;
+`AGENTS.md` has the rules for changing it.
+
 ## Tests
 
 ```bash
 uv run pytest
 ```
 
-309 tests. Beyond the pipeline and the charts, five of them open the rendered page in a
+328 tests. Beyond the pipeline and the charts, five of them open the rendered page in a
 real browser and measure it — at 400px and at 1280px. A page that scrolls sideways, or a
 chart whose type shrinks to an unreadable size when it is scaled to a phone, is a layout
 bug no unit test can see: the page measures the chart's rendered width against its
 viewBox and reports the smallest text the reader actually gets. They skip when no Chrome
 or Chromium is installed.
+
+The contract checks in `test_template_slots.py` run against **both** templates — the live
+design and `design-template.html` — so a design swap cannot quietly drop out of the
+contract, and the starter cannot rot.
 
 ## Offline guarantee
 
