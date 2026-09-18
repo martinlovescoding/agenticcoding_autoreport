@@ -1,0 +1,595 @@
+<!--
+  Multichannel engagement report — template.
+
+  This is the one file a designer replaces. Two contracts make that safe:
+
+  1. SLOTS. `{{NAME}}` is an escaped text value; `{{{NAME}}}` is pre-rendered markup
+     this program built (a chart, a table). Everything static — headings, labels,
+     units, copy, all of the styling — lives here, not in Python. Rename or drop a
+     slot and `tests/test_template_slots.py` fails immediately rather than rendering
+     a hole.
+
+  2. PALETTE. Charts never name a colour. They carry `style="fill:var(--ch-3)"` and
+     expect this file to define the slot. Redefine the tokens below and every chart
+     follows. The values shipped here are the validated reference palette; the
+     channel slots were checked for lightness band, chroma, colour-vision separation
+     and contrast against both surfaces before being used.
+
+  The file is a fragment — no <html>, <head> or <body>. The shell is added by
+  `report.document()`, which also lifts this title and stylesheet into <head>.
+
+  Offline by construction: no external stylesheet, no font request, no script from
+  a CDN. `tests/test_report.py` asserts it.
+-->
+<title>Multichannel Engagement</title>
+<style>
+  /* --- tokens -------------------------------------------------------------
+     Every colour is declared here, in both themes, and components are styled
+     through the tokens only. The dark values are re-declared under both scopes:
+     the media query for the operating system, the [data-theme] scope for the
+     viewer's own toggle, so an explicit choice wins in either direction. */
+  :root {
+    color-scheme: light;
+
+    --plane:          #eef1f4;
+    --surface-1:      #fbfcfd;
+    --surface-2:      #f1f4f7;
+    --text-primary:   #0d1117;
+    --text-secondary: #4d565f;
+    --text-muted:     #6b747d;
+    --grid:           #dfe4ea;
+    --axis:           #c3cad2;
+    --border:         rgba(13, 17, 23, 0.10);
+    --accent:         #1f3d5c;
+
+    /* Channel identity — the slot a channel keeps for the whole report, whatever
+       rank it holds in a given period. Never reassigned, never cycled. */
+    --ch-1: #2a78d6;  /* F2F Call */
+    --ch-2: #eb6834;  /* Phone Call */
+    --ch-3: #1baf7a;  /* Screen-to-Screen Call */
+    --ch-4: #eda100;  /* Rep Email */
+    --ch-5: #e87ba4;  /* HQ Email */
+    --ch-6: #008300;  /* Event */
+    --ch-7: #4a3aa7;  /* Web */
+
+    /* Magnitude — one hue, light to dark. Never the categorical slots.
+       Each step carries the ink its own cell needs, so the pairing between a shade and
+       the text on it is one table a designer can read, not a rule inferred from depth. */
+    --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
+    --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #256abf;  --seq-4-ink: #ffffff;
+    --seq-5: #104281;  --seq-5-ink: #ffffff;
+
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+            "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --plane:          #0b0d10;
+      --surface-1:      #15181c;
+      --surface-2:      #1c2025;
+      --text-primary:   #ffffff;
+      --text-secondary: #b9c0c7;
+      --text-muted:     #868f98;
+      --grid:           #262b31;
+      --axis:           #363c43;
+      --border:         rgba(255, 255, 255, 0.10);
+      --accent:         #7ea6c9;
+
+      --ch-1: #3987e5;
+      --ch-2: #d95926;
+      --ch-3: #199e70;
+      --ch-4: #c98500;
+      --ch-5: #d55181;
+      --ch-6: #008300;
+      --ch-7: #9085e9;
+
+      /* The ramp runs the other way on a dark surface: the deepest value is the
+         lightest cell. Its lowest step also has to clear the surface to read as a
+         cell at all, so the ramp starts one step up rather than at the darkest blue.
+         Ink is re-paired to match — every step clears 5.2:1. */
+      --seq-1: #256abf;  --seq-1-ink: #ffffff;
+      --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+      --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+      --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+      --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --plane:          #0b0d10;
+    --surface-1:      #15181c;
+    --surface-2:      #1c2025;
+    --text-primary:   #ffffff;
+    --text-secondary: #b9c0c7;
+    --text-muted:     #868f98;
+    --grid:           #262b31;
+    --axis:           #363c43;
+    --border:         rgba(255, 255, 255, 0.10);
+    --accent:         #7ea6c9;
+
+    --ch-1: #3987e5;
+    --ch-2: #d95926;
+    --ch-3: #199e70;
+    --ch-4: #c98500;
+    --ch-5: #d55181;
+    --ch-6: #008300;
+    --ch-7: #9085e9;
+
+    --seq-1: #256abf;  --seq-1-ink: #ffffff;
+    --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+    --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+  }
+
+  /* --- page ---------------------------------------------------------------- */
+  body {
+    background: var(--plane);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1060px;
+    margin-inline: auto;
+    padding-block: 30px 72px;
+    padding-inline: clamp(16px, 4vw, 34px);
+  }
+
+  main { display: grid; gap: 36px; }
+
+  /* Both halves of the same default have to go. A grid *track* floors at its items'
+     min-content width, and a grid *item* floors at its own — so a table whose cells are
+     `white-space: nowrap` would widen its whole column, and the running text laid out
+     beside it, past the viewport, and the page would scroll sideways. `minmax(0, 1fr)`
+     lets the track shrink, `min-width: 0` lets the item inside it do the same, and
+     `.scroller` is then the only thing on the page that scrolls sideways — which is
+     where a wide table belongs. */
+  main, .masthead, .overview, .basis, .analysis, figure, details, .colophon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  main > *, .overview > *, .basis > *, .analysis > *, figure > *, details > *,
+  .provenance > * {
+    min-width: 0;
+  }
+
+  h1, h2 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* --- masthead ------------------------------------------------------------ */
+  .masthead { display: grid; gap: 12px; padding-bottom: 26px; }
+
+  .masthead h1 {
+    font-size: clamp(26px, 4.4vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.022em;
+    line-height: 1.15;
+    max-width: 22ch;
+  }
+
+  .subtitle { max-width: 62ch; color: var(--text-secondary); font-size: 14.5px; }
+
+  .provenance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 34px;
+    margin: 6px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .provenance dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* A filesystem path is one unbreakable token, and the Source line is where it lands.
+     Left alone it is wider than the page on a phone and takes the whole layout with it. */
+  .provenance dd { margin: 2px 0 0; font-size: 13.5px; overflow-wrap: anywhere; }
+
+  /* --- the overview block -------------------------------------------------- */
+  .overview {
+    display: grid;
+    gap: 22px;
+    padding: 22px clamp(16px, 3vw, 26px);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  @media (min-width: 760px) {
+    .overview { grid-template-columns: minmax(190px, 260px) minmax(0, 1fr); gap: 34px; }
+  }
+
+  .hero-value {
+    font-size: clamp(44px, 9vw, 60px);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-label { margin-top: 8px; font-size: 13.5px; color: var(--text-secondary); }
+  .hero-note {
+    margin-top: 2px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 18px 20px;
+    margin: 0;
+  }
+  .tile { display: grid; gap: 5px; align-content: start; }
+  .tile dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tile dd {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .of { font-size: 15px; font-weight: 500; color: var(--text-muted); }
+
+  /* --- data basis ---------------------------------------------------------- */
+  .basis { display: grid; gap: 12px; }
+  .basis-head { display: grid; gap: 6px; }
+  .basis h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
+  .headline { font-size: 14.5px; }
+  .note { max-width: 68ch; font-size: 13.5px; color: var(--text-secondary); }
+
+  details { display: grid; gap: 12px; }
+  summary {
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 7px 0;
+    width: fit-content;
+  }
+  summary:hover { color: var(--text-primary); }
+  summary::marker { color: var(--text-muted); }
+
+  /* --- an analysis --------------------------------------------------------- */
+  .analysis { display: grid; gap: 14px; }
+  .analysis + .analysis { border-top: 1px solid var(--border); padding-top: 36px; }
+  .analysis-head { display: grid; gap: 6px; }
+  .analysis h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.014em; }
+
+  .takeaway { max-width: 68ch; font-size: 15px; line-height: 1.5; }
+
+  figure {
+    display: grid;
+    gap: 12px;
+    margin: 4px 0 0;
+    padding: 18px clamp(12px, 3vw, 20px) 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    max-width: 78ch;
+  }
+
+  /* --- charts --------------------------------------------------------------
+     The chart names a palette slot; the value of that slot is decided here. */
+  .chart {
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    margin-inline: auto;
+  }
+  .mark { stroke: none; }
+  .cell { stroke: none; }
+  .cell-empty { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
+  .gridline { stroke-width: 1; }
+
+  .axis-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-muted); }
+  .legend-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-secondary); }
+  /* A bar's value is written just outside its data end, which for a long bar falls
+     across a gridline. The stroke paints behind the fill (paint-order), so a
+     surface-coloured halo punches the label out of the rule instead of intersecting it. */
+  .value-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    fill: var(--text-primary);
+    stroke: var(--surface-1); stroke-width: 3px; paint-order: stroke fill;
+  }
+  /* No fill here: the heatmap writes `var(--seq-N-ink)` on each label, so the ink
+     travels with the step it sits on. */
+  .cell-value { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+  .chart [data-tip]:focus-visible {
+    outline: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+  }
+
+  /* --- tables -------------------------------------------------------------- */
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  caption { text-align: left; }
+
+  th, td {
+    padding: 7px 16px 7px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom-color: var(--axis);
+  }
+  thead th + th { text-align: right; }
+  tbody th { font-weight: 500; text-align: left; }
+  tbody td {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+
+  /* --- colophon ------------------------------------------------------------ */
+  .colophon {
+    display: grid;
+    gap: 12px;
+    margin-top: 4px;
+    padding-top: 26px;
+    border-top: 1px solid var(--border);
+  }
+  .colophon ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  .colophon li { max-width: 74ch; font-size: 13px; color: var(--text-secondary); }
+  .fineprint {
+    font-size: 12px; color: var(--text-muted); max-width: 74ch;
+    overflow-wrap: anywhere;  /* the source path again, this time in prose */
+  }
+
+  /* --- the hover layer ----------------------------------------------------- */
+  .tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    max-width: min(300px, 78vw);
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: var(--text-primary);
+    color: var(--plane);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Field force analytics</p>
+    <h1>Multichannel engagement</h1>
+    <p class="subtitle">
+      How the field force reached health care professionals this period: the volume
+      behind each channel, how activity moved month to month, and where engagement
+      actually landed once the channel was chosen.
+    </p>
+    <dl class="provenance">
+      <div><dt>Period</dt><dd>{{PERIOD_LABEL}}</dd></div>
+      <div><dt>Source</dt><dd class="mono">{{SOURCE_FILE}}</dd></div>
+      <div><dt>Generated</dt><dd>{{GENERATED_AT}}</dd></div>
+    </dl>
+  </header>
+
+  <main>
+    <section class="overview" aria-label="Headline figures">
+      <div>
+        <p class="hero-value">{{KPI_INTERACTIONS}}</p>
+        <p class="hero-label">interactions analysed</p>
+        <p class="hero-note">{{PERIOD_LABEL}}</p>
+      </div>
+      <dl class="tiles">
+        <div class="tile">
+          <dt>HCPs reached</dt>
+          <dd>{{KPI_HCPS}}</dd>
+        </div>
+        <div class="tile">
+          <dt>Mean engagement</dt>
+          <dd>{{KPI_AVG_ENGAGEMENT}}</dd>
+        </div>
+        <div class="tile">
+          <dt>Channels in use</dt>
+          <dd>{{KPI_CHANNELS_USED}}<span class="of"> / {{CHANNEL_TOTAL}}</span></dd>
+        </div>
+        <div class="tile">
+          <dt>Email open rate</dt>
+          <dd>{{KPI_EMAIL_OPEN_RATE}}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="basis" aria-labelledby="basis-h">
+      <div class="basis-head">
+        <p class="eyebrow">Data basis</p>
+        <h2 id="basis-h">What the cleaning pipeline did</h2>
+      </div>
+      <p class="headline">{{QUALITY_HEADLINE}}</p>
+      <p class="note">{{MISSING_SCORE_NOTE}}</p>
+      <details>
+        <summary>Cleaning ledger — every stage and the rows it touched</summary>
+        <div class="scroller">{{{QUALITY_TABLE}}}</div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="channel-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Channel</p>
+        <h2 id="channel-h">Volume and engagement by channel</h2>
+      </div>
+      <p class="takeaway">{{CHANNEL_TAKEAWAY}}</p>
+      <figure>
+        <div>{{{CHANNEL_CHART}}}</div>
+        <figcaption>{{CHANNEL_CAPTION}}</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — volume, share, reach and mean engagement</summary>
+        <div class="scroller">{{{CHANNEL_TABLE}}}</div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="trend-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Trend</p>
+        <h2 id="trend-h">How activity moved through the period</h2>
+      </div>
+      <p class="takeaway">{{TREND_TAKEAWAY}}</p>
+      <figure>
+        <div>{{{TREND_CHART}}}</div>
+        <figcaption>{{TREND_CAPTION}}</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — interactions per month, by channel</summary>
+        <div class="scroller">{{{TREND_TABLE}}}</div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="specialty-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Specialty</p>
+        <h2 id="specialty-h">Where engagement landed, by specialty</h2>
+      </div>
+      <p class="takeaway">{{SPECIALTY_TAKEAWAY}}</p>
+      <figure>
+        <div>{{{SPECIALTY_CHART}}}</div>
+        <figcaption>{{SPECIALTY_CAPTION}}</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — mean engagement per specialty and channel</summary>
+        <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
+      </details>
+    </section>
+
+    <footer class="colophon">
+      <p class="eyebrow">Conventions</p>
+      <ul>
+        <li>
+          A row is one interaction. Only rows that survived cleaning are counted, and
+          the ledger above accounts for every row that did not.
+        </li>
+        <li>
+          A missing engagement score is excluded from every average and is never read
+          as a zero. Nothing is imputed and no value is invented.
+        </li>
+        <li>
+          Dates are read day-first. A numeric date whose first field is above 12 is
+          treated as month-first, because that reading is the only unambiguous one.
+        </li>
+        <li>
+          Colour carries channel identity, so a channel keeps its hue when it changes
+          rank between periods. Each chart also carries its values as text — on the
+          marks where they fit, and in the table view beneath every chart.
+        </li>
+      </ul>
+      <p class="fineprint">
+        Generated by <span class="mono">agenticcoding report</span> from
+        <span class="mono">{{SOURCE_FILE}}</span> on {{GENERATED_AT}}. The page is
+        self-contained: it makes no network requests and can be read offline.
+      </p>
+    </footer>
+  </main>
+</div>
+
+<script>
+  /* The hover layer. A chart is readable without it — every value it encodes is
+     also written into the table view — so this only adds the fast path.
+
+     `textContent`, never `innerHTML`: the tooltip text carries channel and
+     specialty labels that came out of a CSV export. */
+  (function () {
+    var tip = document.createElement("div");
+    tip.className = "tip";
+    tip.hidden = true;
+    document.body.appendChild(tip);
+
+    function place(target) {
+      var text = target.getAttribute("data-tip");
+      if (!text) return;
+      tip.textContent = text;
+      tip.hidden = false;
+
+      var box = target.getBoundingClientRect();
+      var size = tip.getBoundingClientRect();
+      var left = box.left + box.width / 2 - size.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - size.width - 8));
+      var top = box.top - size.height - 10;
+      if (top < 8) top = box.bottom + 10;
+      tip.style.transform =
+        "translate(" + Math.round(left) + "px, " + Math.round(top) + "px)";
+    }
+
+    function hide() {
+      tip.hidden = true;
+    }
+
+    var marks = document.querySelectorAll("[data-tip]");
+    Array.prototype.forEach.call(marks, function (mark) {
+      /* Keyboard reaches the same values the pointer does. */
+      mark.setAttribute("tabindex", "0");
+      mark.addEventListener("pointerenter", function () { place(mark); });
+      mark.addEventListener("pointerleave", hide);
+      mark.addEventListener("focus", function () { place(mark); });
+      mark.addEventListener("blur", hide);
+    });
+
+    window.addEventListener("scroll", hide, { passive: true });
+  })();
+</script>

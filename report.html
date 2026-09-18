@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Multichannel Engagement</title><style>
+  /* --- tokens -------------------------------------------------------------
+     Every colour is declared here, in both themes, and components are styled
+     through the tokens only. The dark values are re-declared under both scopes:
+     the media query for the operating system, the [data-theme] scope for the
+     viewer's own toggle, so an explicit choice wins in either direction. */
+  :root {
+    color-scheme: light;
+
+    --plane:          #eef1f4;
+    --surface-1:      #fbfcfd;
+    --surface-2:      #f1f4f7;
+    --text-primary:   #0d1117;
+    --text-secondary: #4d565f;
+    --text-muted:     #6b747d;
+    --grid:           #dfe4ea;
+    --axis:           #c3cad2;
+    --border:         rgba(13, 17, 23, 0.10);
+    --accent:         #1f3d5c;
+
+    /* Channel identity — the slot a channel keeps for the whole report, whatever
+       rank it holds in a given period. Never reassigned, never cycled. */
+    --ch-1: #2a78d6;  /* F2F Call */
+    --ch-2: #eb6834;  /* Phone Call */
+    --ch-3: #1baf7a;  /* Screen-to-Screen Call */
+    --ch-4: #eda100;  /* Rep Email */
+    --ch-5: #e87ba4;  /* HQ Email */
+    --ch-6: #008300;  /* Event */
+    --ch-7: #4a3aa7;  /* Web */
+
+    /* Magnitude — one hue, light to dark. Never the categorical slots.
+       Each step carries the ink its own cell needs, so the pairing between a shade and
+       the text on it is one table a designer can read, not a rule inferred from depth. */
+    --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
+    --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #256abf;  --seq-4-ink: #ffffff;
+    --seq-5: #104281;  --seq-5-ink: #ffffff;
+
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+            "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --plane:          #0b0d10;
+      --surface-1:      #15181c;
+      --surface-2:      #1c2025;
+      --text-primary:   #ffffff;
+      --text-secondary: #b9c0c7;
+      --text-muted:     #868f98;
+      --grid:           #262b31;
+      --axis:           #363c43;
+      --border:         rgba(255, 255, 255, 0.10);
+      --accent:         #7ea6c9;
+
+      --ch-1: #3987e5;
+      --ch-2: #d95926;
+      --ch-3: #199e70;
+      --ch-4: #c98500;
+      --ch-5: #d55181;
+      --ch-6: #008300;
+      --ch-7: #9085e9;
+
+      /* The ramp runs the other way on a dark surface: the deepest value is the
+         lightest cell. Its lowest step also has to clear the surface to read as a
+         cell at all, so the ramp starts one step up rather than at the darkest blue.
+         Ink is re-paired to match — every step clears 5.2:1. */
+      --seq-1: #256abf;  --seq-1-ink: #ffffff;
+      --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+      --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+      --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+      --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --plane:          #0b0d10;
+    --surface-1:      #15181c;
+    --surface-2:      #1c2025;
+    --text-primary:   #ffffff;
+    --text-secondary: #b9c0c7;
+    --text-muted:     #868f98;
+    --grid:           #262b31;
+    --axis:           #363c43;
+    --border:         rgba(255, 255, 255, 0.10);
+    --accent:         #7ea6c9;
+
+    --ch-1: #3987e5;
+    --ch-2: #d95926;
+    --ch-3: #199e70;
+    --ch-4: #c98500;
+    --ch-5: #d55181;
+    --ch-6: #008300;
+    --ch-7: #9085e9;
+
+    --seq-1: #256abf;  --seq-1-ink: #ffffff;
+    --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+    --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+  }
+
+  /* --- page ---------------------------------------------------------------- */
+  body {
+    background: var(--plane);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1060px;
+    margin-inline: auto;
+    padding-block: 30px 72px;
+    padding-inline: clamp(16px, 4vw, 34px);
+  }
+
+  main { display: grid; gap: 36px; }
+
+  /* Both halves of the same default have to go. A grid *track* floors at its items'
+     min-content width, and a grid *item* floors at its own — so a table whose cells are
+     `white-space: nowrap` would widen its whole column, and the running text laid out
+     beside it, past the viewport, and the page would scroll sideways. `minmax(0, 1fr)`
+     lets the track shrink, `min-width: 0` lets the item inside it do the same, and
+     `.scroller` is then the only thing on the page that scrolls sideways — which is
+     where a wide table belongs. */
+  main, .masthead, .overview, .basis, .analysis, figure, details, .colophon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  main > *, .overview > *, .basis > *, .analysis > *, figure > *, details > *,
+  .provenance > * {
+    min-width: 0;
+  }
+
+  h1, h2 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* --- masthead ------------------------------------------------------------ */
+  .masthead { display: grid; gap: 12px; padding-bottom: 26px; }
+
+  .masthead h1 {
+    font-size: clamp(26px, 4.4vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.022em;
+    line-height: 1.15;
+    max-width: 22ch;
+  }
+
+  .subtitle { max-width: 62ch; color: var(--text-secondary); font-size: 14.5px; }
+
+  .provenance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 34px;
+    margin: 6px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .provenance dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* A filesystem path is one unbreakable token, and the Source line is where it lands.
+     Left alone it is wider than the page on a phone and takes the whole layout with it. */
+  .provenance dd { margin: 2px 0 0; font-size: 13.5px; overflow-wrap: anywhere; }
+
+  /* --- the overview block -------------------------------------------------- */
+  .overview {
+    display: grid;
+    gap: 22px;
+    padding: 22px clamp(16px, 3vw, 26px);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  @media (min-width: 760px) {
+    .overview { grid-template-columns: minmax(190px, 260px) minmax(0, 1fr); gap: 34px; }
+  }
+
+  .hero-value {
+    font-size: clamp(44px, 9vw, 60px);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-label { margin-top: 8px; font-size: 13.5px; color: var(--text-secondary); }
+  .hero-note {
+    margin-top: 2px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 18px 20px;
+    margin: 0;
+  }
+  .tile { display: grid; gap: 5px; align-content: start; }
+  .tile dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tile dd {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .of { font-size: 15px; font-weight: 500; color: var(--text-muted); }
+
+  /* --- data basis ---------------------------------------------------------- */
+  .basis { display: grid; gap: 12px; }
+  .basis-head { display: grid; gap: 6px; }
+  .basis h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
+  .headline { font-size: 14.5px; }
+  .note { max-width: 68ch; font-size: 13.5px; color: var(--text-secondary); }
+
+  details { display: grid; gap: 12px; }
+  summary {
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 7px 0;
+    width: fit-content;
+  }
+  summary:hover { color: var(--text-primary); }
+  summary::marker { color: var(--text-muted); }
+
+  /* --- an analysis --------------------------------------------------------- */
+  .analysis { display: grid; gap: 14px; }
+  .analysis + .analysis { border-top: 1px solid var(--border); padding-top: 36px; }
+  .analysis-head { display: grid; gap: 6px; }
+  .analysis h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.014em; }
+
+  .takeaway { max-width: 68ch; font-size: 15px; line-height: 1.5; }
+
+  figure {
+    display: grid;
+    gap: 12px;
+    margin: 4px 0 0;
+    padding: 18px clamp(12px, 3vw, 20px) 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    max-width: 78ch;
+  }
+
+  /* --- charts --------------------------------------------------------------
+     The chart names a palette slot; the value of that slot is decided here. */
+  .chart {
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    margin-inline: auto;
+  }
+  .mark { stroke: none; }
+  .cell { stroke: none; }
+  .cell-empty { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
+  .gridline { stroke-width: 1; }
+
+  .axis-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-muted); }
+  .legend-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-secondary); }
+  /* A bar's value is written just outside its data end, which for a long bar falls
+     across a gridline. The stroke paints behind the fill (paint-order), so a
+     surface-coloured halo punches the label out of the rule instead of intersecting it. */
+  .value-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    fill: var(--text-primary);
+    stroke: var(--surface-1); stroke-width: 3px; paint-order: stroke fill;
+  }
+  /* No fill here: the heatmap writes `var(--seq-N-ink)` on each label, so the ink
+     travels with the step it sits on. */
+  .cell-value { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+  .chart [data-tip]:focus-visible {
+    outline: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+  }
+
+  /* --- tables -------------------------------------------------------------- */
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  caption { text-align: left; }
+
+  th, td {
+    padding: 7px 16px 7px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom-color: var(--axis);
+  }
+  thead th + th { text-align: right; }
+  tbody th { font-weight: 500; text-align: left; }
+  tbody td {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+
+  /* --- colophon ------------------------------------------------------------ */
+  .colophon {
+    display: grid;
+    gap: 12px;
+    margin-top: 4px;
+    padding-top: 26px;
+    border-top: 1px solid var(--border);
+  }
+  .colophon ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  .colophon li { max-width: 74ch; font-size: 13px; color: var(--text-secondary); }
+  .fineprint {
+    font-size: 12px; color: var(--text-muted); max-width: 74ch;
+    overflow-wrap: anywhere;  /* the source path again, this time in prose */
+  }
+
+  /* --- the hover layer ----------------------------------------------------- */
+  .tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    max-width: min(300px, 78vw);
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: var(--text-primary);
+    color: var(--plane);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style></head>
+<body>
+
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Field force analytics</p>
+    <h1>Multichannel engagement</h1>
+    <p class="subtitle">
+      How the field force reached health care professionals this period: the volume
+      behind each channel, how activity moved month to month, and where engagement
+      actually landed once the channel was chosen.
+    </p>
+    <dl class="provenance">
+      <div><dt>Period</dt><dd>March – August 2026</dd></div>
+      <div><dt>Source</dt><dd class="mono">data/raw_activities.csv</dd></div>
+      <div><dt>Generated</dt><dd>18 September 2026</dd></div>
+    </dl>
+  </header>
+
+  <main>
+    <section class="overview" aria-label="Headline figures">
+      <div>
+        <p class="hero-value">184</p>
+        <p class="hero-label">interactions analysed</p>
+        <p class="hero-note">March – August 2026</p>
+      </div>
+      <dl class="tiles">
+        <div class="tile">
+          <dt>HCPs reached</dt>
+          <dd>67</dd>
+        </div>
+        <div class="tile">
+          <dt>Mean engagement</dt>
+          <dd>54.76</dd>
+        </div>
+        <div class="tile">
+          <dt>Channels in use</dt>
+          <dd>7<span class="of"> / 7</span></dd>
+        </div>
+        <div class="tile">
+          <dt>Email open rate</dt>
+          <dd>48.4 %</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="basis" aria-labelledby="basis-h">
+      <div class="basis-head">
+        <p class="eyebrow">Data basis</p>
+        <h2 id="basis-h">What the cleaning pipeline did</h2>
+      </div>
+      <p class="headline">200 raw rows → 184 analysable (92 %)</p>
+      <p class="note">Engagement score is missing on 5 of 184 interactions. Those rows count toward volume and are excluded from every average — nothing is imputed.</p>
+      <details>
+        <summary>Cleaning ledger — every stage and the rows it touched</summary>
+        <div class="scroller"><table><thead><tr><th scope="col">Stage</th><th scope="col">Rows</th></tr></thead><tbody><tr><th scope="row">Duplicate interaction_id rows removed</th><td class="num">8</td></tr><tr><th scope="row">Rows with a missing interaction_id removed</th><td class="num">0</td></tr><tr><th scope="row">Channel names normalized (variants → 7 channels)</th><td class="num">68</td></tr><tr><th scope="row">Rows with an unrecognized channel removed</th><td class="num">0</td></tr><tr><th scope="row">Specialty spellings unified</th><td class="num">109</td></tr><tr><th scope="row">Rows with a missing or invalid date removed</th><td class="num">6</td></tr><tr><th scope="row">Rows with a date in the future removed</th><td class="num">2</td></tr><tr><th scope="row">Negative duration corrected (absolute value)</th><td class="num">2</td></tr><tr><th scope="row">Implausible duration (&gt; 300 min) set to missing</th><td class="num">2</td></tr><tr><th scope="row">Engagement score clamped to 0–100</th><td class="num">2</td></tr><tr><th scope="row">Missing product → &apos;Unknown&apos;</th><td class="num">6</td></tr><tr><th scope="row">Missing rep name → &apos;Unassigned&apos;</th><td class="num">2</td></tr></tbody></table></div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="channel-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Channel</p>
+        <h2 id="channel-h">Volume and engagement by channel</h2>
+      </div>
+      <p class="takeaway">F2F Call carries the most activity — 48 interactions, 26.1 % of the total — and Event posts the highest average engagement, at 76.8.</p>
+      <figure>
+        <div><svg class="chart" viewBox="0 0 720 274" role="img" preserveAspectRatio="xMidYMid meet"><line class="gridline" x1="96" y1="8" x2="96" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="96" y="263" text-anchor="middle">0</text><line class="gridline" x1="192" y1="8" x2="192" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="192" y="263" text-anchor="middle">10</text><line class="gridline" x1="288" y1="8" x2="288" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="288" y="263" text-anchor="middle">20</text><line class="gridline" x1="384" y1="8" x2="384" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="384" y="263" text-anchor="middle">30</text><line class="gridline" x1="480" y1="8" x2="480" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="480" y="263" text-anchor="middle">40</text><line class="gridline" x1="576" y1="8" x2="576" y2="246" style="stroke:var(--grid)"/><text class="axis-label" x="576" y="263" text-anchor="middle">50</text><rect class="mark" x="96" y="8" width="460.8" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-1)" data-tip="F2F Call: 48 interactions (26.1 %), 36 HCPs, avg engagement 75.72" data-channel="F2F Call"/><text class="axis-label" x="86" y="23" text-anchor="end">F2F</text><text class="value-label" x="564.8" y="23">48 · 26.1 %</text><rect class="mark" x="96" y="44" width="307.2" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-4)" data-tip="Rep Email: 32 interactions (17.4 %), 22 HCPs, avg engagement 39.64" data-channel="Rep Email"/><text class="axis-label" x="86" y="59" text-anchor="end">Rep Email</text><text class="value-label" x="411.2" y="59">32 · 17.4 %</text><rect class="mark" x="96" y="80" width="307.2" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-5)" data-tip="HQ Email: 32 interactions (17.4 %), 24 HCPs, avg engagement 26.25" data-channel="HQ Email"/><text class="axis-label" x="86" y="95" text-anchor="end">HQ Email</text><text class="value-label" x="411.2" y="95">32 · 17.4 %</text><rect class="mark" x="96" y="116" width="268.8" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-2)" data-tip="Phone Call: 28 interactions (15.2 %), 23 HCPs, avg engagement 67.42" data-channel="Phone Call"/><text class="axis-label" x="86" y="131" text-anchor="end">Phone</text><text class="value-label" x="372.8" y="131">28 · 15.2 %</text><rect class="mark" x="96" y="152" width="172.8" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-3)" data-tip="Screen-to-Screen Call: 18 interactions (9.8 %), 17 HCPs, avg engagement 63.18" data-channel="Screen-to-Screen Call"/><text class="axis-label" x="86" y="167" text-anchor="end">S2S</text><text class="value-label" x="276.8" y="167">18 · 9.8 %</text><rect class="mark" x="96" y="188" width="172.8" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-7)" data-tip="Web: 18 interactions (9.8 %), 14 HCPs, avg engagement 37.63" data-channel="Web"/><text class="axis-label" x="86" y="203" text-anchor="end">Web</text><text class="value-label" x="276.8" y="203">18 · 9.8 %</text><rect class="mark" x="96" y="224" width="76.8" height="22" rx="4" clip_path="inset(0 0 0 0 round 0 4px 4px 0)" style="fill:var(--ch-6)" data-tip="Event: 8 interactions (4.3 %), 8 HCPs, avg engagement 76.8" data-channel="Event"/><text class="axis-label" x="86" y="239" text-anchor="end">Event</text><text class="value-label" x="180.8" y="239">8 · 4.3 %</text></svg></div>
+        <figcaption>Interactions per channel, March – August 2026.</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — volume, share, reach and mean engagement</summary>
+        <div class="scroller"><table><thead><tr><th scope="col">Channel</th><th scope="col">Interactions</th><th scope="col">Share</th><th scope="col">HCPs</th><th scope="col">Avg engagement</th></tr></thead><tbody><tr><th scope="row">F2F Call</th><td class="num">48</td><td class="num">26.1 %</td><td class="num">36</td><td class="num">75.72</td></tr><tr><th scope="row">Rep Email</th><td class="num">32</td><td class="num">17.4 %</td><td class="num">22</td><td class="num">39.64</td></tr><tr><th scope="row">HQ Email</th><td class="num">32</td><td class="num">17.4 %</td><td class="num">24</td><td class="num">26.25</td></tr><tr><th scope="row">Phone Call</th><td class="num">28</td><td class="num">15.2 %</td><td class="num">23</td><td class="num">67.42</td></tr><tr><th scope="row">Screen-to-Screen Call</th><td class="num">18</td><td class="num">9.8 %</td><td class="num">17</td><td class="num">63.18</td></tr><tr><th scope="row">Web</th><td class="num">18</td><td class="num">9.8 %</td><td class="num">14</td><td class="num">37.63</td></tr><tr><th scope="row">Event</th><td class="num">8</td><td class="num">4.3 %</td><td class="num">8</td><td class="num">76.8</td></tr></tbody></table></div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="trend-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Trend</p>
+        <h2 id="trend-h">How activity moved through the period</h2>
+      </div>
+      <p class="takeaway">Volume peaked in May at 45 interactions and closed at 25 in Aug.</p>
+      <figure>
+        <div><svg class="chart" viewBox="0 0 720 262" role="img" preserveAspectRatio="xMidYMid meet"><line class="gridline" x1="96" y1="208" x2="576" y2="208" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="212" text-anchor="end">0</text><line class="gridline" x1="96" y1="170.4" x2="576" y2="170.4" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="174.4" text-anchor="end">10</text><line class="gridline" x1="96" y1="132.8" x2="576" y2="132.8" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="136.8" text-anchor="end">20</text><line class="gridline" x1="96" y1="95.2" x2="576" y2="95.2" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="99.2" text-anchor="end">30</text><line class="gridline" x1="96" y1="57.6" x2="576" y2="57.6" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="61.6" text-anchor="end">40</text><line class="gridline" x1="96" y1="20" x2="576" y2="20" style="stroke:var(--grid)"/><text class="axis-label" x="86" y="24" text-anchor="end">50</text><rect class="mark" x="124" y="177.92" width="24" height="30.08" style="fill:var(--ch-1)" data-tip="Mar · F2F Call: 8" data-month="2026-03" data-channel="F2F Call"/><rect class="mark" x="124" y="160.88" width="24" height="15.04" style="fill:var(--ch-2)" data-tip="Mar · Phone Call: 4" data-month="2026-03" data-channel="Phone Call"/><rect class="mark" x="124" y="147.6" width="24" height="11.28" style="fill:var(--ch-3)" data-tip="Mar · Screen-to-Screen Call: 3" data-month="2026-03" data-channel="Screen-to-Screen Call"/><rect class="mark" x="124" y="126.8" width="24" height="18.8" style="fill:var(--ch-4)" data-tip="Mar · Rep Email: 5" data-month="2026-03" data-channel="Rep Email"/><rect class="mark" x="124" y="98.48" width="24" height="26.32" style="fill:var(--ch-5)" data-tip="Mar · HQ Email: 7" data-month="2026-03" data-channel="HQ Email"/><rect class="mark" x="124" y="92.72" width="24" height="3.76" style="fill:var(--ch-6)" data-tip="Mar · Event: 1" data-month="2026-03" data-channel="Event"/><rect class="mark" x="124" y="83.2" width="24" height="7.52" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-7)" data-tip="Mar · Web: 2" data-month="2026-03" data-channel="Web"/><text class="axis-label" x="136" y="225" text-anchor="middle">Mar</text><rect class="mark" x="204" y="174.16" width="24" height="33.84" style="fill:var(--ch-1)" data-tip="Apr · F2F Call: 9" data-month="2026-04" data-channel="F2F Call"/><rect class="mark" x="204" y="153.36" width="24" height="18.8" style="fill:var(--ch-2)" data-tip="Apr · Phone Call: 5" data-month="2026-04" data-channel="Phone Call"/><rect class="mark" x="204" y="143.84" width="24" height="7.52" style="fill:var(--ch-3)" data-tip="Apr · Screen-to-Screen Call: 2" data-month="2026-04" data-channel="Screen-to-Screen Call"/><rect class="mark" x="204" y="126.8" width="24" height="15.04" style="fill:var(--ch-4)" data-tip="Apr · Rep Email: 4" data-month="2026-04" data-channel="Rep Email"/><rect class="mark" x="204" y="121.04" width="24" height="3.76" style="fill:var(--ch-5)" data-tip="Apr · HQ Email: 1" data-month="2026-04" data-channel="HQ Email"/><rect class="mark" x="204" y="115.28" width="24" height="3.76" style="fill:var(--ch-6)" data-tip="Apr · Event: 1" data-month="2026-04" data-channel="Event"/><rect class="mark" x="204" y="94.48" width="24" height="18.8" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-7)" data-tip="Apr · Web: 5" data-month="2026-04" data-channel="Web"/><text class="axis-label" x="216" y="225" text-anchor="middle">Apr</text><rect class="mark" x="284" y="144.08" width="24" height="63.92" style="fill:var(--ch-1)" data-tip="May · F2F Call: 17" data-month="2026-05" data-channel="F2F Call"/><rect class="mark" x="284" y="127.04" width="24" height="15.04" style="fill:var(--ch-2)" data-tip="May · Phone Call: 4" data-month="2026-05" data-channel="Phone Call"/><rect class="mark" x="284" y="117.52" width="24" height="7.52" style="fill:var(--ch-3)" data-tip="May · Screen-to-Screen Call: 2" data-month="2026-05" data-channel="Screen-to-Screen Call"/><rect class="mark" x="284" y="81.68" width="24" height="33.84" style="fill:var(--ch-4)" data-tip="May · Rep Email: 9" data-month="2026-05" data-channel="Rep Email"/><rect class="mark" x="284" y="53.36" width="24" height="26.32" style="fill:var(--ch-5)" data-tip="May · HQ Email: 7" data-month="2026-05" data-channel="HQ Email"/><rect class="mark" x="284" y="43.84" width="24" height="7.52" style="fill:var(--ch-6)" data-tip="May · Event: 2" data-month="2026-05" data-channel="Event"/><rect class="mark" x="284" y="26.8" width="24" height="15.04" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-7)" data-tip="May · Web: 4" data-month="2026-05" data-channel="Web"/><text class="axis-label" x="296" y="225" text-anchor="middle">May</text><rect class="mark" x="364" y="192.96" width="24" height="15.04" style="fill:var(--ch-1)" data-tip="Jun · F2F Call: 4" data-month="2026-06" data-channel="F2F Call"/><rect class="mark" x="364" y="168.4" width="24" height="22.56" style="fill:var(--ch-2)" data-tip="Jun · Phone Call: 6" data-month="2026-06" data-channel="Phone Call"/><rect class="mark" x="364" y="143.84" width="24" height="22.56" style="fill:var(--ch-3)" data-tip="Jun · Screen-to-Screen Call: 6" data-month="2026-06" data-channel="Screen-to-Screen Call"/><rect class="mark" x="364" y="119.28" width="24" height="22.56" style="fill:var(--ch-4)" data-tip="Jun · Rep Email: 6" data-month="2026-06" data-channel="Rep Email"/><rect class="mark" x="364" y="94.72" width="24" height="22.56" style="fill:var(--ch-5)" data-tip="Jun · HQ Email: 6" data-month="2026-06" data-channel="HQ Email"/><rect class="mark" x="364" y="85.2" width="24" height="7.52" style="fill:var(--ch-6)" data-tip="Jun · Event: 2" data-month="2026-06" data-channel="Event"/><rect class="mark" x="364" y="68.16" width="24" height="15.04" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-7)" data-tip="Jun · Web: 4" data-month="2026-06" data-channel="Web"/><text class="axis-label" x="376" y="225" text-anchor="middle">Jun</text><rect class="mark" x="444" y="185.44" width="24" height="22.56" style="fill:var(--ch-1)" data-tip="Jul · F2F Call: 6" data-month="2026-07" data-channel="F2F Call"/><rect class="mark" x="444" y="179.68" width="24" height="3.76" style="fill:var(--ch-2)" data-tip="Jul · Phone Call: 1" data-month="2026-07" data-channel="Phone Call"/><rect class="mark" x="444" y="170.16" width="24" height="7.52" style="fill:var(--ch-3)" data-tip="Jul · Screen-to-Screen Call: 2" data-month="2026-07" data-channel="Screen-to-Screen Call"/><rect class="mark" x="444" y="153.12" width="24" height="15.04" style="fill:var(--ch-4)" data-tip="Jul · Rep Email: 4" data-month="2026-07" data-channel="Rep Email"/><rect class="mark" x="444" y="132.32" width="24" height="18.8" style="fill:var(--ch-5)" data-tip="Jul · HQ Email: 5" data-month="2026-07" data-channel="HQ Email"/><rect class="mark" x="444" y="122.8" width="24" height="7.52" style="fill:var(--ch-6)" data-tip="Jul · Event: 2" data-month="2026-07" data-channel="Event"/><rect class="mark" x="444" y="109.52" width="24" height="11.28" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-7)" data-tip="Jul · Web: 3" data-month="2026-07" data-channel="Web"/><text class="axis-label" x="456" y="225" text-anchor="middle">Jul</text><rect class="mark" x="524" y="192.96" width="24" height="15.04" style="fill:var(--ch-1)" data-tip="Aug · F2F Call: 4" data-month="2026-08" data-channel="F2F Call"/><rect class="mark" x="524" y="160.88" width="24" height="30.08" style="fill:var(--ch-2)" data-tip="Aug · Phone Call: 8" data-month="2026-08" data-channel="Phone Call"/><rect class="mark" x="524" y="147.6" width="24" height="11.28" style="fill:var(--ch-3)" data-tip="Aug · Screen-to-Screen Call: 3" data-month="2026-08" data-channel="Screen-to-Screen Call"/><rect class="mark" x="524" y="130.56" width="24" height="15.04" style="fill:var(--ch-4)" data-tip="Aug · Rep Email: 4" data-month="2026-08" data-channel="Rep Email"/><rect class="mark" x="524" y="106" width="24" height="22.56" rx="4" clip_path="inset(0 0 0 0 round 4px 4px 0 0)" style="fill:var(--ch-5)" data-tip="Aug · HQ Email: 6" data-month="2026-08" data-channel="HQ Email"/><text class="axis-label" x="536" y="225" text-anchor="middle">Aug</text><rect x="0" y="241" width="10" height="10" rx="2" style="fill:var(--ch-1)"/><text class="legend-label" x="16" y="250">F2F</text><rect x="102.86" y="241" width="10" height="10" rx="2" style="fill:var(--ch-2)"/><text class="legend-label" x="118.86" y="250">Phone</text><rect x="205.71" y="241" width="10" height="10" rx="2" style="fill:var(--ch-3)"/><text class="legend-label" x="221.71" y="250">S2S</text><rect x="308.57" y="241" width="10" height="10" rx="2" style="fill:var(--ch-4)"/><text class="legend-label" x="324.57" y="250">Rep Email</text><rect x="411.43" y="241" width="10" height="10" rx="2" style="fill:var(--ch-5)"/><text class="legend-label" x="427.43" y="250">HQ Email</text><rect x="514.29" y="241" width="10" height="10" rx="2" style="fill:var(--ch-6)"/><text class="legend-label" x="530.29" y="250">Event</text><rect x="617.14" y="241" width="10" height="10" rx="2" style="fill:var(--ch-7)"/><text class="legend-label" x="633.14" y="250">Web</text></svg></div>
+        <figcaption>Interactions per month, stacked by channel, March – August 2026.</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — interactions per month, by channel</summary>
+        <div class="scroller"><table><thead><tr><th scope="col">Month</th><th scope="col">Total</th><th scope="col">F2F Call</th><th scope="col">Phone Call</th><th scope="col">Screen-to-Screen Call</th><th scope="col">Rep Email</th><th scope="col">HQ Email</th><th scope="col">Event</th><th scope="col">Web</th></tr></thead><tbody><tr><th scope="row">Mar</th><td class="num">30</td><td class="num">8</td><td class="num">4</td><td class="num">3</td><td class="num">5</td><td class="num">7</td><td class="num">1</td><td class="num">2</td></tr><tr><th scope="row">Apr</th><td class="num">27</td><td class="num">9</td><td class="num">5</td><td class="num">2</td><td class="num">4</td><td class="num">1</td><td class="num">1</td><td class="num">5</td></tr><tr><th scope="row">May</th><td class="num">45</td><td class="num">17</td><td class="num">4</td><td class="num">2</td><td class="num">9</td><td class="num">7</td><td class="num">2</td><td class="num">4</td></tr><tr><th scope="row">Jun</th><td class="num">34</td><td class="num">4</td><td class="num">6</td><td class="num">6</td><td class="num">6</td><td class="num">6</td><td class="num">2</td><td class="num">4</td></tr><tr><th scope="row">Jul</th><td class="num">23</td><td class="num">6</td><td class="num">1</td><td class="num">2</td><td class="num">4</td><td class="num">5</td><td class="num">2</td><td class="num">3</td></tr><tr><th scope="row">Aug</th><td class="num">25</td><td class="num">4</td><td class="num">8</td><td class="num">3</td><td class="num">4</td><td class="num">6</td><td class="num">0</td><td class="num">0</td></tr></tbody></table></div>
+      </details>
+    </section>
+
+    <section class="analysis" aria-labelledby="specialty-h">
+      <div class="analysis-head">
+        <p class="eyebrow">Specialty</p>
+        <h2 id="specialty-h">Where engagement landed, by specialty</h2>
+      </div>
+      <p class="takeaway">Oncology shows the strongest mean engagement at 58.24, ahead of Diabetology at 49.89.</p>
+      <figure>
+        <div><svg class="chart" viewBox="0 0 720 206" role="img" preserveAspectRatio="xMidYMid meet"><text class="axis-label" x="98" y="29" text-anchor="end">Oncology</text><rect class="mark cell" x="111" y="9" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Oncology × F2F Call: 81.08" data-specialty="Oncology" data-channel="F2F Call"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="153.57" y="29" text-anchor="middle">81.08</text><rect class="mark cell" x="198.14" y="9" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Oncology × Phone Call: 74.07" data-specialty="Oncology" data-channel="Phone Call"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="240.71" y="29" text-anchor="middle">74.07</text><rect class="mark cell" x="285.29" y="9" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Oncology × Screen-to-Screen Call: 65.25" data-specialty="Oncology" data-channel="Screen-to-Screen Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="327.86" y="29" text-anchor="middle">65.25</text><rect class="mark cell" x="372.43" y="9" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Oncology × Rep Email: 41.1" data-specialty="Oncology" data-channel="Rep Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="415" y="29" text-anchor="middle">41.1</text><rect class="mark cell" x="459.57" y="9" width="85.14" height="32" style="fill:var(--seq-1)" data-tip="Oncology × HQ Email: 19.99" data-specialty="Oncology" data-channel="HQ Email"/><text class="cell-value" style="fill:var(--seq-1-ink)" x="502.14" y="29" text-anchor="middle">19.99</text><rect class="mark cell" x="546.71" y="9" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Oncology × Event: 74.9" data-specialty="Oncology" data-channel="Event"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="589.29" y="29" text-anchor="middle">74.9</text><rect class="mark cell" x="633.86" y="9" width="85.14" height="32" style="fill:var(--seq-3)" data-tip="Oncology × Web: 51.3" data-specialty="Oncology" data-channel="Web"/><text class="cell-value" style="fill:var(--seq-3-ink)" x="676.43" y="29" text-anchor="middle">51.3</text><text class="axis-label" x="98" y="63" text-anchor="end">Cardiology</text><rect class="mark cell" x="111" y="43" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Cardiology × F2F Call: 76.47" data-specialty="Cardiology" data-channel="F2F Call"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="153.57" y="63" text-anchor="middle">76.47</text><rect class="mark cell" x="198.14" y="43" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Cardiology × Phone Call: 73" data-specialty="Cardiology" data-channel="Phone Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="240.71" y="63" text-anchor="middle">73</text><rect class="mark cell" x="285.29" y="43" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Cardiology × Screen-to-Screen Call: 61.1" data-specialty="Cardiology" data-channel="Screen-to-Screen Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="327.86" y="63" text-anchor="middle">61.1</text><rect class="mark cell" x="372.43" y="43" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Cardiology × Rep Email: 38.72" data-specialty="Cardiology" data-channel="Rep Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="415" y="63" text-anchor="middle">38.72</text><rect class="mark cell" x="459.57" y="43" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Cardiology × HQ Email: 39.14" data-specialty="Cardiology" data-channel="HQ Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="502.14" y="63" text-anchor="middle">39.14</text><rect class="mark cell" x="546.71" y="43" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Cardiology × Event: 72.7" data-specialty="Cardiology" data-channel="Event"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="589.29" y="63" text-anchor="middle">72.7</text><rect class="mark cell" x="633.86" y="43" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Cardiology × Web: 41.1" data-specialty="Cardiology" data-channel="Web"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="676.43" y="63" text-anchor="middle">41.1</text><text class="axis-label" x="98" y="97" text-anchor="end">General Medicine</text><rect class="mark cell" x="111" y="77" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="General Medicine × F2F Call: 70.7" data-specialty="General Medicine" data-channel="F2F Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="153.57" y="97" text-anchor="middle">70.7</text><rect class="mark cell" x="198.14" y="77" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="General Medicine × Phone Call: 66.73" data-specialty="General Medicine" data-channel="Phone Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="240.71" y="97" text-anchor="middle">66.73</text><rect class="mark cell" x="285.29" y="77" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="General Medicine × Screen-to-Screen Call: 60.98" data-specialty="General Medicine" data-channel="Screen-to-Screen Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="327.86" y="97" text-anchor="middle">60.98</text><rect class="mark cell" x="372.43" y="77" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="General Medicine × Rep Email: 38.27" data-specialty="General Medicine" data-channel="Rep Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="415" y="97" text-anchor="middle">38.27</text><rect class="mark cell" x="459.57" y="77" width="85.14" height="32" style="fill:var(--seq-1)" data-tip="General Medicine × HQ Email: 25.47" data-specialty="General Medicine" data-channel="HQ Email"/><text class="cell-value" style="fill:var(--seq-1-ink)" x="502.14" y="97" text-anchor="middle">25.47</text><rect class="mark cell" x="546.71" y="77" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="General Medicine × Event: 80" data-specialty="General Medicine" data-channel="Event"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="589.29" y="97" text-anchor="middle">80</text><rect class="mark cell" x="633.86" y="77" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="General Medicine × Web: 30.88" data-specialty="General Medicine" data-channel="Web"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="676.43" y="97" text-anchor="middle">30.88</text><text class="axis-label" x="98" y="131" text-anchor="end">Pulmonology</text><rect class="mark cell" x="111" y="111" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Pulmonology × F2F Call: 72.6" data-specialty="Pulmonology" data-channel="F2F Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="153.57" y="131" text-anchor="middle">72.6</text><rect class="mark cell" x="198.14" y="111" width="85.14" height="32" style="fill:var(--seq-3)" data-tip="Pulmonology × Phone Call: 55.98" data-specialty="Pulmonology" data-channel="Phone Call"/><text class="cell-value" style="fill:var(--seq-3-ink)" x="240.71" y="131" text-anchor="middle">55.98</text><rect class="mark cell" x="285.29" y="111" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Pulmonology × Screen-to-Screen Call: 70.1" data-specialty="Pulmonology" data-channel="Screen-to-Screen Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="327.86" y="131" text-anchor="middle">70.1</text><rect class="mark cell" x="372.43" y="111" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Pulmonology × Rep Email: 42.64" data-specialty="Pulmonology" data-channel="Rep Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="415" y="131" text-anchor="middle">42.64</text><rect class="mark cell" x="459.57" y="111" width="85.14" height="32" style="fill:var(--seq-1)" data-tip="Pulmonology × HQ Email: 20.77" data-specialty="Pulmonology" data-channel="HQ Email"/><text class="cell-value" style="fill:var(--seq-1-ink)" x="502.14" y="131" text-anchor="middle">20.77</text><rect class="mark cell" x="546.71" y="111" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Pulmonology × Event: 79.2" data-specialty="Pulmonology" data-channel="Event"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="589.29" y="131" text-anchor="middle">79.2</text><rect class="mark cell" x="633.86" y="111" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Pulmonology × Web: 40.53" data-specialty="Pulmonology" data-channel="Web"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="676.43" y="131" text-anchor="middle">40.53</text><text class="axis-label" x="98" y="165" text-anchor="end">Diabetology</text><rect class="mark cell" x="111" y="145" width="85.14" height="32" style="fill:var(--seq-5)" data-tip="Diabetology × F2F Call: 74.8" data-specialty="Diabetology" data-channel="F2F Call"/><text class="cell-value" style="fill:var(--seq-5-ink)" x="153.57" y="165" text-anchor="middle">74.8</text><rect class="mark cell" x="198.14" y="145" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Diabetology × Phone Call: 61.77" data-specialty="Diabetology" data-channel="Phone Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="240.71" y="165" text-anchor="middle">61.77</text><rect class="mark cell" x="285.29" y="145" width="85.14" height="32" style="fill:var(--seq-4)" data-tip="Diabetology × Screen-to-Screen Call: 63.62" data-specialty="Diabetology" data-channel="Screen-to-Screen Call"/><text class="cell-value" style="fill:var(--seq-4-ink)" x="327.86" y="165" text-anchor="middle">63.62</text><rect class="mark cell" x="372.43" y="145" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Diabetology × Rep Email: 29.3" data-specialty="Diabetology" data-channel="Rep Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="415" y="165" text-anchor="middle">29.3</text><rect class="mark cell" x="459.57" y="145" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Diabetology × HQ Email: 33.7" data-specialty="Diabetology" data-channel="HQ Email"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="502.14" y="165" text-anchor="middle">33.7</text><rect class="cell cell-empty" x="546.71" y="145" width="85.14" height="32" data-tip="Diabetology × Event: no interactions"/><rect class="mark cell" x="633.86" y="145" width="85.14" height="32" style="fill:var(--seq-2)" data-tip="Diabetology × Web: 36.12" data-specialty="Diabetology" data-channel="Web"/><text class="cell-value" style="fill:var(--seq-2-ink)" x="676.43" y="165" text-anchor="middle">36.12</text><text class="axis-label" x="153.57" y="195" text-anchor="middle">F2F</text><text class="axis-label" x="240.71" y="195" text-anchor="middle">Phone</text><text class="axis-label" x="327.86" y="195" text-anchor="middle">S2S</text><text class="axis-label" x="415" y="195" text-anchor="middle">Rep Email</text><text class="axis-label" x="502.14" y="195" text-anchor="middle">HQ Email</text><text class="axis-label" x="589.29" y="195" text-anchor="middle">Event</text><text class="axis-label" x="676.43" y="195" text-anchor="middle">Web</text></svg></div>
+        <figcaption>Mean engagement score per specialty and channel, March – August 2026.</figcaption>
+      </figure>
+      <details open>
+        <summary>Table view — mean engagement per specialty and channel</summary>
+        <div class="scroller"><table><thead><tr><th scope="col">Specialty</th><th scope="col">F2F Call</th><th scope="col">Phone Call</th><th scope="col">Screen-to-Screen Call</th><th scope="col">Rep Email</th><th scope="col">HQ Email</th><th scope="col">Event</th><th scope="col">Web</th></tr></thead><tbody><tr><th scope="row">Oncology</th><td class="num">81.08</td><td class="num">74.07</td><td class="num">65.25</td><td class="num">41.1</td><td class="num">19.99</td><td class="num">74.9</td><td class="num">51.3</td></tr><tr><th scope="row">Cardiology</th><td class="num">76.47</td><td class="num">73</td><td class="num">61.1</td><td class="num">38.72</td><td class="num">39.14</td><td class="num">72.7</td><td class="num">41.1</td></tr><tr><th scope="row">General Medicine</th><td class="num">70.7</td><td class="num">66.73</td><td class="num">60.98</td><td class="num">38.27</td><td class="num">25.47</td><td class="num">80</td><td class="num">30.88</td></tr><tr><th scope="row">Pulmonology</th><td class="num">72.6</td><td class="num">55.98</td><td class="num">70.1</td><td class="num">42.64</td><td class="num">20.77</td><td class="num">79.2</td><td class="num">40.53</td></tr><tr><th scope="row">Diabetology</th><td class="num">74.8</td><td class="num">61.77</td><td class="num">63.62</td><td class="num">29.3</td><td class="num">33.7</td><td class="num">—</td><td class="num">36.12</td></tr></tbody></table></div>
+      </details>
+    </section>
+
+    <footer class="colophon">
+      <p class="eyebrow">Conventions</p>
+      <ul>
+        <li>
+          A row is one interaction. Only rows that survived cleaning are counted, and
+          the ledger above accounts for every row that did not.
+        </li>
+        <li>
+          A missing engagement score is excluded from every average and is never read
+          as a zero. Nothing is imputed and no value is invented.
+        </li>
+        <li>
+          Dates are read day-first. A numeric date whose first field is above 12 is
+          treated as month-first, because that reading is the only unambiguous one.
+        </li>
+        <li>
+          Colour carries channel identity, so a channel keeps its hue when it changes
+          rank between periods. Each chart also carries its values as text — on the
+          marks where they fit, and in the table view beneath every chart.
+        </li>
+      </ul>
+      <p class="fineprint">
+        Generated by <span class="mono">agenticcoding report</span> from
+        <span class="mono">data/raw_activities.csv</span> on 18 September 2026. The page is
+        self-contained: it makes no network requests and can be read offline.
+      </p>
+    </footer>
+  </main>
+</div>
+
+<script>
+  /* The hover layer. A chart is readable without it — every value it encodes is
+     also written into the table view — so this only adds the fast path.
+
+     `textContent`, never `innerHTML`: the tooltip text carries channel and
+     specialty labels that came out of a CSV export. */
+  (function () {
+    var tip = document.createElement("div");
+    tip.className = "tip";
+    tip.hidden = true;
+    document.body.appendChild(tip);
+
+    function place(target) {
+      var text = target.getAttribute("data-tip");
+      if (!text) return;
+      tip.textContent = text;
+      tip.hidden = false;
+
+      var box = target.getBoundingClientRect();
+      var size = tip.getBoundingClientRect();
+      var left = box.left + box.width / 2 - size.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - size.width - 8));
+      var top = box.top - size.height - 10;
+      if (top < 8) top = box.bottom + 10;
+      tip.style.transform =
+        "translate(" + Math.round(left) + "px, " + Math.round(top) + "px)";
+    }
+
+    function hide() {
+      tip.hidden = true;
+    }
+
+    var marks = document.querySelectorAll("[data-tip]");
+    Array.prototype.forEach.call(marks, function (mark) {
+      /* Keyboard reaches the same values the pointer does. */
+      mark.setAttribute("tabindex", "0");
+      mark.addEventListener("pointerenter", function () { place(mark); });
+      mark.addEventListener("pointerleave", hide);
+      mark.addEventListener("focus", function () { place(mark); });
+      mark.addEventListener("blur", hide);
+    });
+
+    window.addEventListener("scroll", hide, { passive: true });
+  })();
+</script>
+</body>
+</html>

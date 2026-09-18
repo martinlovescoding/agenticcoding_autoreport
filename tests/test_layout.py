@@ -1,0 +1,121 @@
+"""The one property no unit test can see: the page fits the screen it is opened on.
+
+Everything else about the page is structural — a slot either rendered or it did not.
+Layout is not. A grid *track* floors at its items' min-content width and a grid *item*
+floors at its own, so a table whose cells are `white-space: nowrap` widens its whole
+column, and the running text laid out beside it, past the viewport. Nothing in the
+markup is wrong; the page simply scrolls sideways, and reading it means panning. That is
+a browser measurement or it is nothing.
+
+Chrome will not open a window narrower than about 500 CSS pixels, so the report is
+measured inside a 400px iframe instead — the width the artifact contract names, and the
+narrowest screen the page has to hold. Skipped where no browser is installed, because a
+missing browser is not a failure of the page.
+"""
+
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from agenticcoding import cli
+
+PHONE_WIDTH = 400
+DESKTOP_WIDTH = 1280
+
+_BROWSERS = (
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+)
+
+# Measures the page as the reader's screen would: inside a frame of a known width, with
+# the document's own scroll width read back out. `--allow-file-access-from-files` is what
+# lets the wrapper read the frame it loaded.
+_WRAPPER = """<!doctype html>
+<meta charset="utf-8">
+<title>measuring</title>
+<iframe id="frame" src="{page}" style="width:{width}px;height:2000px;border:0"></iframe>
+<script>
+  var frame = document.getElementById("frame");
+  function measure() {{
+    var root = frame.contentDocument.documentElement;
+    document.title = "w" + root.scrollWidth + "," + root.clientWidth;
+  }}
+  frame.addEventListener("load", measure);
+  if (frame.contentDocument && frame.contentDocument.readyState === "complete") measure();
+</script>
+"""
+
+
+def _browser() -> str | None:
+    for candidate in _BROWSERS:
+        if Path(candidate).exists():
+            return candidate
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
+
+
+@pytest.fixture(scope="module")
+def browser() -> str:
+    found = _browser()
+    if found is None:
+        pytest.skip("no Chrome or Chromium on this machine to measure layout with")
+    return found
+
+
+@pytest.fixture(scope="module")
+def page(tmp_path_factory) -> Path:
+    """A real report of a real dataset — a short page would not overflow."""
+    directory = tmp_path_factory.mktemp("layout")
+    raw, report = directory / "raw.csv", directory / "report.html"
+    cli.main(["generate", "--rows", "200", "--out", str(raw)])
+    cli.main(["report", "--input", str(raw), "--out", str(report), "--as-of", "2026-09-18"])
+    return report
+
+
+def measure(browser: str, page: Path, width: int) -> tuple[int, int]:
+    """`(scroll width, viewport width)` of the report inside a `width`-wide frame."""
+    wrapper = page.with_name(f"wrapper-{width}.html")
+    wrapper.write_text(_WRAPPER.format(page=page.name, width=width), encoding="utf-8")
+    dumped = subprocess.run(
+        [
+            browser, "--headless", "--disable-gpu", "--hide-scrollbars",
+            "--allow-file-access-from-files",
+            "--window-size=1400,900", "--virtual-time-budget=4000",
+            "--dump-dom", wrapper.as_uri(),
+        ],
+        capture_output=True, text=True, timeout=120, check=True,
+    ).stdout
+    match = re.search(r"<title>w(\d+),(\d+)</title>", dumped)
+    assert match, "the measurement never ran — the frame did not load"
+    return int(match.group(1)), int(match.group(2))
+
+
+def test_the_page_does_not_scroll_sideways_on_a_phone(browser, page):
+    scroll, viewport = measure(browser, page, PHONE_WIDTH)
+
+    assert viewport == PHONE_WIDTH, "the frame did not lay out at the width it was given"
+    assert scroll <= viewport, (
+        f"the page is {scroll}px wide in a {viewport}px viewport: "
+        f"{scroll - viewport}px of it is off-screen to the right"
+    )
+
+
+def test_the_page_does_not_scroll_sideways_on_a_desktop_either(browser, page):
+    scroll, viewport = measure(browser, page, DESKTOP_WIDTH)
+
+    assert scroll <= viewport
+
+
+def test_the_page_still_uses_the_width_it_is_given(browser, page):
+    """A page that fits by collapsing to one narrow column has not been fixed."""
+    _, viewport = measure(browser, page, DESKTOP_WIDTH)
+
+    assert viewport > PHONE_WIDTH, "the page did not lay out wider when given more room"

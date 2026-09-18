@@ -5,7 +5,7 @@ import datetime as dt
 import pytest
 
 from agenticcoding import schema
-from agenticcoding.clean import clean_rows, read_csv, write_csv
+from agenticcoding.clean import clean_rows, read_csv, read_header, write_csv
 from conftest import AS_OF, raw_row
 
 
@@ -410,6 +410,47 @@ def test_read_csv_strips_a_utf8_bom(tmp_path):
     rows = read_csv(path)
 
     assert rows[0]["interaction_id"] == "I001"
+
+
+# --- the header of a file, read on its own ------------------------------------
+
+
+def test_read_header_finds_the_id_column_under_a_verbose_spelling(tmp_path):
+    """The CLI's gate is `"interaction_id" in header`, so a header must arrive normalized.
+
+    A spreadsheet export writes ` Interaction ID `; read as written it names no id column,
+    and a perfectly good file is rejected as the wrong one.
+    """
+    path = tmp_path / "raw.csv"
+    path.write_text(
+        " Interaction ID ,Date,Duration-Min\nI001,2026-03-02,30\n", encoding="utf-8"
+    )
+
+    assert read_header(path) == ["interaction_id", "date", "duration_min"]
+
+
+def test_read_header_reads_a_header_only_export(tmp_path):
+    """A filtered export has columns and no rows: an empty report, not a broken file."""
+    path = tmp_path / "empty.csv"
+    path.write_text("interaction_id,date,channel\n", encoding="utf-8")
+
+    assert read_header(path) == ["interaction_id", "date", "channel"]
+
+
+def test_read_header_strips_a_utf8_bom(tmp_path):
+    """Excel writes one. Left on, the first column is `\\ufeffinteraction_id` and the file fails the gate."""
+    path = tmp_path / "bom.csv"
+    path.write_text("﻿interaction_id,date\nI001,2026-03-02\n", encoding="utf-8")
+
+    assert read_header(path) == ["interaction_id", "date"]
+
+
+def test_read_header_on_a_file_with_nothing_in_it_names_no_columns(tmp_path):
+    """No `StopIteration` out of `next()` — the CLI needs a false gate, not a traceback."""
+    path = tmp_path / "blank.csv"
+    path.write_text("", encoding="utf-8")
+
+    assert read_header(path) == []
 
 
 def test_clean_rows_accepts_an_iterator(as_of):

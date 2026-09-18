@@ -1,0 +1,201 @@
+interaction_id,date,rep_name,hcp_id,specialty,channel,product,duration_min,engagement_score,opened,clicked
+I0001,2026-03-11,Anna Weber,H074,Diabetologie,F2F Call,Zorvex,18,60.4,,
+I0002,2026-03-31,Jonas Klein,H070,General Medicine,hq,Nevastin,6,30.3,Y,Y
+I0003,2026-03-05,Sara Nguyen,H008,Oncology,field email,Cardilux,6,,N,N
+I0004,2026-03-13,Jonas Klein,H032,GP,HQ Email,Cardilux,3,,N,N
+I0005,2026/03/21,Tobias Lang,H037,General Medicine,HQ_Email,Cardilux,2,34.3,N,N
+I0006,2026-03-02,Sara Nguyen,H010,Pulmonology,F2F Call,Cardilux,30,75.9,,
+I0007,2026/03/03,Felix Braun,H059,General Medicine,Rep Email,Cardilux,9,31.4,Y,Y
+I0008,2026-03-27,Felix Braun,H037,oncology,Phone Call,Pulmofix,18,85.3,,
+I0009,18.03.2026,Tobias Lang,H028,Haemato-Oncology,Rep Email,Pulmofix,4,,N,N
+I0010,2026-03-04,Sara Nguyen,H018,Allgemeinmed.,F2F Call,Pulmofix,33,65.8,,
+I0011,12.03.2026,Jonas Klein,H030,General Medicine,Web,Nevastin,4,33.6,,
+I0012,03/19/2026,Sara Nguyen,H037,Oncology,F2F Call,Cardilux,26,82.4,,
+I0013,2026-03-02,Felix Braun,H007,Pneumo,web,Pulmofix,4,33.2,,
+I0014,30.03.2026,  ,H052,oncology,rep-email,Zorvex,8,29.1,Y,Y
+I0015,2026-03-17,Anna Weber,H047,Diabetology,F2F Call,Pulmofix,26,66.5,,
+I0016,2026-03-07,Anna Weber,H047,Respiratory,F2F Call,Pulmofix,36,,,
+I0017,2026-03-02,Felix Braun,H044,Allgemeinmed.,HQ_Email,Zorvex,5,22.1,N,N
+I0018,2026-03-03,Sara Nguyen,H070,oncology,F2F Call,Zorvex,28,89.0,,
+I0019,2026-03-14,Jonas Klein,H022,Cardiology,Phone,Cardilux,23,62.2,,
+I0020,2026-03-14,Tobias Lang,H025,Pneumo,Phone Call,Nevastin,12,47.0,,
+I0021,2026-03-03,Tobias Lang,H004,Allgemeinmed.,F2F Call,Cardilux,31,61.2,,
+I0022,2026-03-08,Miriam Roth,H047,GP,Rep Email,Zorvex,3,125.7,Y,Y
+I0023,03/03/2026,Felix Braun,H011,Pneumo,HQ Email,Pulmofix,1,14.8,N,N
+I0024,2026-03-18,Felix Braun,H012,Haemato-Oncology,Event,Pulmofix,85,66.0,,
+I0025,2026/03/14,Tobias Lang,H017,pulmonology,Screen-to-Screen Call,Nevastin,27,70.1,,
+I0026,2026/03/02,Jonas Klein,H045,General Medicine,telephone call,Zorvex,15,51.8,,
+I0027,03/27/2026,Jonas Klein,H025,oncology,Headquarters Email,Nevastin,3,32.8,N,N
+I0028,2026/03/19,Miriam Roth,H017,Diabetologie,VC,Pulmofix,32,57.1,,
+I0029,2026-03-04,Anna Weber,H020,Diabetology,VC,Nevastin,23,68.6,,
+I0030,2026-03-31,Miriam Roth,H019,Cardio,HQ_Email,Pulmofix,3,24.8,Y,N
+I0031,2026-04-26,Jonas Klein,H062,Kardiologie,Phone Call,Cardilux,20,48.8,,
+I0032,25.04.2026,Tobias Lang,H058,Oncology,Web,Zorvex,6,43.8,,
+I0033,2026-04-04,Jonas Klein,H039,Diabetology,Phone Call,Cardilux,20,55.5,,
+I0034,2026-04-29,Anna Weber,H029,Haemato-Oncology,face-to-face,Pulmofix,18,100.0,,
+I0035,2026-04-18,Tobias Lang,H056,Oncology,F2F Call,Nevastin,26,75.1,,
+I0036,2026-04-02,Anna Weber,H044,Onkologie,Rep Email,Cardilux,8,47.8,N,N
+I0037,04/08/2026,Miriam Roth,H030,Allgemeinmedizin,hq,Nevastin,6,48.0,N,N
+I0038,2026-04-07,Tobias Lang,H034,Pulmonology,R Email,Zorvex,1237,46.9,Y,Y
+I0039,04/09/2026,Anna Weber,H010,Cardiology,Rep Email,Nevastin,4,41.1,Y,Y
+I0040,2026-04-02,Tobias Lang,H044,Diabeto,F2F Call,Cardilux,24,86.9,,
+I0041,2026-04-25,Miriam Roth,H015,General Medicine,Phone Call,Nevastin,20,81.2,,
+I0042,2026/04/04,Felix Braun,H027,General Medicine,website,Cardilux,4,28.7,,
+I0043,2026-04-17,Sara Nguyen,H003,Diabetology,Screen-to-Screen Call,Pulmofix,25,67.3,,
+I0044,2026-04-15,Sara Nguyen,H056,Respiratory,F2F Call,Pulmofix,33,63.8,,
+I0045,2026/04/18,Felix Braun,H030,Kardiologie,Web,Pulmofix,11,35.3,,
+I0046,2026/04/01,Miriam Roth,H002,Onkologie,Web,Zorvex,7,58.8,,
+I0047,2026-04-25,Felix Braun,H037,Oncology,F2F Call,Pulmofix,18,91.1,,
+I0048,2026-04-29,Sara Nguyen,H047,Oncology,Visit,Zorvex,31,78.9,,
+I0049,30.04.2026,Tobias Lang,H001,Allgemeinmed.,Web,Nevastin,11,34.2,,
+I0050,2026/04/03,Anna Weber,H012,Onkologie,f2f,Cardilux,27,79.8,,
+I0051,2026/04/15,Sara Nguyen,H068,Oncology,Rep Email,Cardilux,10,40.6,N,N
+I0052,2026/04/11,Sara Nguyen,H019,Cardiology,VC,Nevastin,25,54.2,,
+I0053,2026-04-20,Sara Nguyen,H003,Respiratory,Symposium,Nevastin,52,79.2,,
+I0054,2026-04-17,Tobias Lang,H014,cardiology,  F2F   Call ,Zorvex,33,94.1,,
+I0055,2026-04-20,Anna Weber,H001,Pulmonology,telephone call,Zorvex,13,57.1,,
+I0056,2026-04-17,Miriam Roth,H033,general medicine,Phone Call,Nevastin,21,80.9,,
+I0057,2026/04/07,Miriam Roth,H049,pulmonology,F2F Call,Nevastin,24,71.8,,
+I0058,2026-05-03,Jonas Klein,H027,General Medicine,website,Zorvex,9,29.7,,
+I0059,2026-05-20,Felix Braun,H017,Cardiology,  F2F   Call ,Zorvex,27,52.1,,
+I0060,2026-05-05,Jonas Klein,H063,Allgemeinmedizin,Phone Call,Pulmofix,29,66.0,,
+I0061,05/11/2026,Anna Weber,H054,Pneumo,Phone Call,Zorvex,23,47.0,,
+I0062,2026-05-09,Miriam Roth,H026,GP,Rep-Email,Zorvex,9,33.2,N,N
+I0063,2026-05-21,Anna Weber,H047,Oncology,Rep-Email,Zorvex,6,53.7,N,N
+I0064,2026-05-24,Tobias Lang,H032,Cardiology,Advisory Board,Nevastin,116,73.8,,
+I0065,2026-05-23,Felix Braun,H004,Haemato-Oncology,Screen-to-Screen,Nevastin,19,66.8,,
+I0066,2026-05-10,n/a,H058,cardiology,Phone,Cardilux,20,81.5,,
+I0067,2026/05/20,Felix Braun,H022,Diabetologie,hq,Cardilux,3,33.7,Y,Y
+I0068,2026/05/19,Tobias Lang,H051,Cardio,field email,Pulmofix,9,39.9,Y,N
+I0069,2026-05-05,Jonas Klein,H018,General Medicine,Congress,Cardilux,75,89.9,,
+I0070,2026-05-01,Tobias Lang,H073,oncology,HQ Email,Nevastin,6,20.4,Y,Y
+I0071,2026-05-16,Felix Braun,H036,cardiology,Rep Email,Nevastin,7,36.9,N,N
+I0072,2026-05-02,Miriam Roth,H058,Pulmonology,F2F Call,Zorvex,26,87.6,,
+I0073,2026-05-16,Tobias Lang,H061,general medicine,face-to-face,Pulmofix,35,62.3,,
+I0074,2026-05-09,Jonas Klein,H060,Pneumologie,website,Nevastin,6,50.1,,
+I0075,22.05.2026,Anna Weber,H059,pulmonology,Visit,Nevastin,29,62.5,,
+I0076,2026-05-04,Tobias Lang,H017,cardiology,Headquarters Email,Zorvex,5,148.4,N,N
+I0077,2026-05-23,Jonas Klein,H025,pulmonology,  F2F   Call ,Zorvex,46,70.8,,
+I0078,2026-05-07,Jonas Klein,H041,oncology,f2f,Nevastin,37,75.1,,
+I0079,2026-05-22,Felix Braun,H040,Onkologie,HQ Email,Cardilux,4,33.1,Y,Y
+I0080,05/16/2026,Felix Braun,H064,Oncology,F2F Call,Pulmofix,33,69.6,,
+I0081,05/10/2026,Jonas Klein,H065,Oncology,F2F Call,Nevastin,19,84.3,,
+I0082,2026/05/23,Tobias Lang,H038,Cardiology,f2f,Nevastin,42,82.3,,
+I0083,17.05.2026,Sara Nguyen,H019,General Medicine,HQ Email,Zorvex,4,26.6,N,N
+I0084,2026-05-10,Anna Weber,H041,Diabetologie,Phone Call,Cardilux,23,68.3,,
+I0085,2026/05/15,Felix Braun,H060,Onkologie,F2F Call,Cardilux,23,71.3,,
+I0086,05/15/2026,Tobias Lang,H011,Diabetes,Web,Zorvex,9,33.1,,
+I0087,2026-05-15,Anna Weber,H040,Pulmonology,HQ Email,Nevastin,2,24.5,N,N
+I0088,2026-05-25,Felix Braun,H047,Haemato-Oncology,Rep Email,Pulmofix,5,45.3,N,N
+I0089,2026/05/04,Anna Weber,H008,Diabetes,face-to-face,Cardilux,31,82.9,,
+I0090,05/29/2026,Miriam Roth,H006,General Medicine,R Email,Zorvex,12,25.1,Y,N
+I0091,2026-05-18,Tobias Lang,H060,Respiratory,F2F Call,Pulmofix,38,80.3,,
+I0092,2026-05-07,Felix Braun,H002,Onco,Screen-to-Screen Call,Nevastin,30,73.4,,
+I0093,2026-05-10,Sara Nguyen,H047,General Medicine,HQ Email,Nevastin,6,20.3,N,N
+I0094,2026-05-03,Jonas Klein,H071,Diabeto,F2F Call,Zorvex,-44,81.7,,
+I0095,2026-05-30,Felix Braun,H013,Diabetology,Web,Nevastin,10,37.6,,
+I0096,2026-05-16,Felix Braun,H031,Pulmonology,F2F,Cardilux,35,65.7,,
+I0097,01.05.2026,Miriam Roth,H034,diabetology,Rep Email,Nevastin,5,29.3,Y,Y
+I0098,2026-05-10,Anna Weber,H065,Kardiologie,rep-email,Zorvex,12,11.7,N,N
+I0099,2026-05-15,Anna Weber,H058,Diabetologie,face-to-face,Nevastin,32,58.9,,
+I0100,03.05.2026,Miriam Roth,H075,Cardio,f2f,Nevastin,47,90.0,,
+I0101,2026-05-27,Jonas Klein,H001,general medicine,Rep Email,Cardilux,11,37.8,Y,Y
+I0102,2026-05-17,Miriam Roth,H027,Onkologie,F2F Call,Cardilux,35,81.4,,
+I0103,2026-06-06,Tobias Lang,H047,Allgemeinmedizin,HQ Email,Zorvex,6,18.2,N,N
+I0104,2026-06-20,Jonas Klein,H012,General Medicine,Rep Email,Zorvex,7,42.0,Y,N
+I0105,2026-06-10,Felix Braun,H012,Kardiologie,HQ Email,Nevastin,1,11.5,N,N
+I0106,2026-06-03,Jonas Klein,H009,oncology,Rep-Email,Zorvex,8,42.6,Y,Y
+I0107,2026/06/07,Sara Nguyen,H050,Cardio,Web,Nevastin,8,34.4,,
+I0108,2026-06-02,Jonas Klein,H026,Kardiologie,Phone Call,Zorvex,13,73.4,,
+I0109,2026-06-26,Jonas Klein,H016,Allgemeinmed.,Rep Email,Zorvex,6,28.2,Y,N
+I0110,2026-06-16,Felix Braun,H059,Pulmonology,Phone Call,Pulmofix,22,57.6,,
+I0111,2026/06/18,Tobias Lang,H048,Oncology,rep-email,Pulmofix,9,39.1,Y,Y
+I0112,2026-06-16,Tobias Lang,H023,General Medicine,Screen-to-Screen,Nevastin,18,66.5,,
+I0113,2026/06/03,Jonas Klein,H065,General Medicine,Rep Email,Cardilux,10,25.9,N,N
+I0114,2026-06-14,Felix Braun,H065,Diabetology,Screen-to-Screen Call,Nevastin,25,60.0,,
+I0115,06/04/2026,Miriam Roth,H015,Diabetology,  F2F   Call ,Nevastin,34,92.9,,
+I0116,2026-06-26,Miriam Roth,H045,General Medicine,telephone call,Cardilux,15,61.5,,
+I0117,06/13/2026,Sara Nguyen,H062,cardiology,Event,Cardilux,79,71.6,,
+I0118,2026-06-22,Jonas Klein,H036,Pneumologie,Rep Email,  ,9,42.5,N,N
+I0119,2026-06-18,Tobias Lang,H047,cardiology,F2F Call,Zorvex,28,63.6,,
+I0120,06/05/2026,Sara Nguyen,H048,Allgemeinmed.,F2F,Cardilux,27,57.9,,
+I0121,2026/06/21,Miriam Roth,H007,Oncology,Screen-to-Screen Call,Cardilux,26,57.0,,
+I0122,2026-06-18,Tobias Lang,H038,Oncology,Screen-to-Screen Call,Cardilux,21,63.8,,
+I0123,03.06.2026,Sara Nguyen,H006,Oncology,Event,Zorvex,85,83.8,,
+I0124,2026/06/21,Tobias Lang,H039,GP,HQ Email,Zorvex,4,14.9,N,N
+I0125,06.06.2026,Felix Braun,H013,Pulmonology,Web,Pulmofix,10,38.3,,
+I0126,2026-06-13,Sara Nguyen,H072,Cardiology,Screen-to-Screen Call,Pulmofix,25,68.0,,
+I0127,2026/06/23,Anna Weber,H022,Onkologie,HQ_Email,Nevastin,4,13.6,N,N
+I0128,2026-06-09,Jonas Klein,H071,GP,F2F,  ,28,83.4,,
+I0129,06/14/2026,Anna Weber,H054,Onco,hq,Zorvex,2,15.9,N,N
+I0130,06/10/2026,Felix Braun,H069,diabetology,Webinar,Zorvex,3,36.0,,
+I0131,2026/06/22,Anna Weber,H014,General Medicine,Screen-to-Screen Call,Cardilux,26,55.8,,
+I0132,2026-06-10,Sara Nguyen,H056,Diabetologie,Phone Call,Cardilux,24,61.5,,
+I0133,06/14/2026,Jonas Klein,H065,Respiratory,Phone Call,Nevastin,17,71.2,,
+I0134,02.06.2026,Tobias Lang,H050,Diabetology,Web,Pulmofix,4,37.8,,
+I0135,2026-06-10,Miriam Roth,H004,Pneumo,HQ Email,Pulmofix,4,23.0,Y,N
+I0136,24.06.2026,Anna Weber,H019,Cardio,Phone Call,Nevastin,23,86.3,,
+I0137,12.07.2026,Jonas Klein,H050,General Medicine,Screen-to-Screen Call,Zorvex,24,67.4,,
+I0138,2026-07-05,Felix Braun,H012,Cardio,website,Pulmofix,4,53.6,,
+I0139,07/23/2026,Tobias Lang,H027,General Medicine,F2F Call,Cardilux,37,94.1,,
+I0140,2026-07-01,Sara Nguyen,H048,Kardiologie,face-to-face,Cardilux,41,75.5,,
+I0141,2026-07-01,Anna Weber,H056,Onco,Telefon,Zorvex,19,75.2,,
+I0142,07/02/2026,Anna Weber,H012,Kardiologie,HQ Email,Cardilux,8,27.7,N,N
+I0143,2026/07/05,Jonas Klein,H063,Diabetologie,Screen-to-Screen Call,n/a,25,65.1,,
+I0144,23.07.2026,Felix Braun,H021,Allgemeinmedizin,Web,Nevastin,8,23.6,,
+I0145,2026-07-21,Felix Braun,H072,Oncology,F2F Call,Zorvex,28,76.0,,
+I0146,2026-07-21,Miriam Roth,H012,general medicine,rep-email,Nevastin,10,20.8,Y,N
+I0147,2026-07-02,Sara Nguyen,H059,Kardiologie,R Email,Cardilux,5,45.0,Y,Y
+I0148,2026-07-23,Jonas Klein,H058,Oncology,HQ Email,Cardilux,3,6.1,N,N
+I0149,2026/07/03,Sara Nguyen,H031,Allgemeinmed.,HQ Email,Nevastin,6,31.0,N,N
+I0150,07/24/2026,Jonas Klein,H045,Allgemeinmedizin,Webinar,Zorvex,3,35.5,,
+I0151,2026-07-02,Miriam Roth,H020,Pulmonology,Visit,Pulmofix,26,75.0,,
+I0152,07/03/2026,Tobias Lang,H036,Cardiology,Rep Email,Cardilux,10,57.7,Y,Y
+I0153,2026-07-28,Felix Braun,H052,cardiology,HQ Email,Pulmofix,6,31.7,Y,Y
+I0154,2026-07-19,Felix Braun,H075,General Medicine,Event,Zorvex,52,71.8,,
+I0155,07/25/2026,Felix Braun,H013,Pulmonology,field email,Nevastin,10,33.0,N,N
+I0156,2026-07-12,Felix Braun,H053,Diabeto,face-to-face,Nevastin,34,68.2,,
+I0157,2026-07-07,Anna Weber,H063,General Medicine,Event,Nevastin,77,78.3,,
+I0158,2026/07/27,Tobias Lang,H067,Cardio,F2F Call,Pulmofix,14,84.2,,
+I0159,2026-07-31,Felix Braun,H067,Allgemeinmed.,HQ Email,Zorvex,1,13.2,Y,N
+I0160,2026-08-24,Anna Weber,H051,Pulmonology,R Email,Nevastin,4,67.1,Y,Y
+I0161,2026-08-20,Tobias Lang,H019,Oncology,newsletter,  ,3,18.0,Y,N
+I0162,2026-08-12,Jonas Klein,H061,general medicine,video call,Pulmofix,17,51.7,,
+I0163,2026/08/21,Miriam Roth,H062,Haemato-Oncology,Phone Call,Cardilux,17,81.0,,
+I0164,2026-08-02,Miriam Roth,H011,Pulmonology,Rep Email,Zorvex,6,23.7,N,N
+I0165,2026-08-09,Miriam Roth,H018,Cardiology,face-to-face,Zorvex,28,70.0,,
+I0166,09.08.2026,Sara Nguyen,H038,General Medicine,Phone Call,Nevastin,20,64.2,,
+I0167,2026-08-13,Sara Nguyen,H027,Allgemeinmed.,F2F Call,Zorvex,34,60.6,,
+I0168,2026/08/13,Jonas Klein,H039,Cardio,Phone Call,Pulmofix,13,79.6,,
+I0169,02.08.2026,Tobias Lang,H054,Onco,phone,Zorvex,20,67.5,,
+I0170,2026-08-01,Felix Braun,H032,Allgemeinmedizin,HQ Email,Cardilux,2,35.6,N,N
+I0171,2026-08-03,Anna Weber,H060,GP,HQ Email,Cardilux,3,11.7,Y,Y
+I0172,2026-08-14,Anna Weber,H043,Cardiology,Phone Call,n/a,19,79.2,,
+I0173,2026-08-30,Miriam Roth,H054,general medicine,Screen-to-Screen Call,Cardilux,28,69.1,,
+I0174,14.08.2026,Miriam Roth,H027,Haemato-Oncology,Rep Email,Pulmofix,2,41.5,Y,Y
+I0175,2026-08-21,Anna Weber,H065,Oncology,Rep Email,Cardilux,6,30.2,Y,Y
+I0176,2026-08-23,Anna Weber,H012,Oncology,Phone Call,Pulmofix,28,85.4,,
+I0177,2026-08-22,Felix Braun,H001,GP,HQ Email,Pulmofix,5,31.2,Y,N
+I0178,2026/08/12,Felix Braun,H011,Oncology,Phone,Nevastin,1396,50.0,,
+I0179,2026-08-19,Felix Braun,H013,GP,F2F Call,Nevastin,32,80.3,,
+I0180,09.08.2026,Miriam Roth,H039,General Medicine,Screen-to-Screen Call,Zorvex,23,55.4,,
+I0181,2026-08-04,Tobias Lang,H054,General Medicine,HQ Email,Pulmofix,3,7.4,N,N
+I0182,2026/08/08,Tobias Lang,H020,general medicine,hq,,4,37.2,Y,Y
+I0183,2026-08-10,Anna Weber,H016,general medicine,Phone Call,Zorvex,-10,61.5,,
+I0184,2026-08-24,Felix Braun,H032,General Medicine,Visit,Zorvex,31,,,
+I0001,2026-03-11,Anna Weber,H074,Diabetologie,F2F Call,Zorvex,18,38,,
+I0002,2026-03-31,Jonas Klein,H070,General Medicine,hq,Nevastin,6,89,Y,Y
+I0003,2026-03-05,Sara Nguyen,H008,Oncology,field email,Cardilux,6,61,N,N
+I0004,2026-03-13,Jonas Klein,H032,GP,HQ Email,Cardilux,3,13,N,N
+I0005,2026/03/21,Tobias Lang,H037,General Medicine,HQ_Email,Cardilux,2,43,N,N
+I0006,2026-03-02,Sara Nguyen,H010,Pulmonology,F2F Call,Cardilux,30,73,,
+I0007,2026/03/03,Felix Braun,H059,General Medicine,Rep Email,Cardilux,9,35,Y,Y
+I0008,2026-03-27,Felix Braun,H037,oncology,Phone Call,Pulmofix,18,65,,
+I1193,2026-13-45,Felix Braun,H002,General Medicine,F2F Call,Nevastin,32,75.0,,
+I1194,  ,Jonas Klein,H069,Cardiology,HQ Email,Pulmofix,2,7.4,N,N
+I1195,not a date,Sara Nguyen,H014,Oncology,HQ Email,Pulmofix,7,32.4,Y,Y
+I1196,,Miriam Roth,H075,General Medicine,Phone Call,Nevastin,12,52.3,,
+I1197,not a date,Sara Nguyen,H075,Oncology,Rep Email,Zorvex,7,54.2,Y,Y
+I1198,32.13.2026,Anna Weber,H057,Cardiology,F2F Call,Nevastin,21,54.8,,
+I2199,09/30/2026,Miriam Roth,H023,Oncology,F2F Call,Cardilux,38,86.9,,
+I2200,2026-10-17,Felix Braun,H032,Pulmonology,Web,Nevastin,8,11.1,,

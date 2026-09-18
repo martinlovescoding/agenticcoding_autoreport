@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from agenticcoding import charts, metrics, schema
+from agenticcoding import charts, metrics, schema, svgcore
 
 # --- helpers ------------------------------------------------------------------
 
@@ -29,9 +29,14 @@ def marks(root: ET.Element) -> list[ET.Element]:
 
 
 def fills(root: ET.Element) -> set[str]:
-    """Every fill token a chart references, e.g. `ch-1` or `seq-3`."""
+    """Every fill token a *mark* references, e.g. `ch-1` or `seq-3`.
+
+    Marks only. A value label also paints, but with an ink token that is a property of
+    the text rather than of the series, and counting it would turn "which ramp steps
+    appear" into "which ramp steps appear plus their inks".
+    """
     found = set()
-    for el in root.iter():
+    for el in marks(root):
         style = el.get("style") or ""
         for declaration in style.split(";"):
             if declaration.startswith("fill:var("):
@@ -72,6 +77,27 @@ def test_colour_is_never_a_presentation_attribute(sample):
 
     assert 'fill="var(' not in rendered
     assert "style=" in rendered
+
+
+def test_text_never_wears_a_series_colour(sample):
+    """A label's identity comes from the mark beside it, never from its own colour.
+
+    The one fill a text element may carry is an ink: a colour chosen for readability on
+    the surface behind it, which says nothing about which series it belongs to.
+    """
+    rendered = (
+        charts.channel_bars(metrics.channel_mix(sample))
+        + charts.monthly_columns(metrics.monthly_trend(sample))
+        + charts.specialty_heatmap(metrics.specialty_matrix(sample))
+    )
+    painted = [
+        el.get("style")
+        for el in parse(rendered).iter("text")
+        if (el.get("style") or "").startswith("fill:var(")
+    ]
+
+    assert painted, "the heatmap's values would render black with no ink at all"
+    assert all(style.endswith("-ink)") for style in painted), painted
 
 
 # --- 1. channel bars ----------------------------------------------------------
@@ -139,6 +165,44 @@ def test_channel_bars_on_empty_input_is_empty_and_parses():
     assert marks(root) == []
 
 
+def test_channel_bars_scales_to_the_axis_top_not_to_the_largest_bar():
+    """The axis tops out at a round number, so the longest bar must stop short of it.
+
+    Scaling the plot on the largest value instead puts the last gridline past the edge
+    of the plot the bar is measured against.
+    """
+    mix = metrics.ChannelMix(
+        rows=(metrics.ChannelStat(channel="F2F Call", interactions=48, hcps=36,
+                                  avg_engagement=76.8, share=100.0),),
+        total=48,
+    )
+    root = parse(charts.channel_bars(mix))
+    width = float(marks(root)[0].get("width"))
+
+    assert svgcore.ticks(48.0)[-1] == 50.0, "the axis top rounds up to 50"
+    assert width == pytest.approx(charts.PLOT_WIDTH * 48 / 50)
+
+
+def test_channel_bars_rounds_a_share_the_same_way_the_table_does():
+    """17.39 % on the mark and 17.4 % in the table would be the same number twice."""
+    mix = metrics.ChannelMix(
+        rows=(metrics.ChannelStat(channel="Web", interactions=4, hcps=2,
+                                  avg_engagement=None, share=17.391),),
+        total=23,
+    )
+    labels = [el.text for el in parse(charts.channel_bars(mix)).iter("text")]
+
+    assert any("17.4 %" in label for label in labels if label)
+    assert not any("17.39" in label for label in labels if label)
+
+
+def test_the_right_margin_fits_a_value_label():
+    """The value sits at the end of the bar, outside it — so it needs somewhere to go."""
+    margin = charts.WIDTH - (charts.LABEL_GUTTER + charts.PLOT_WIDTH)
+
+    assert margin >= 130, "an 11px monospace label runs to about 80px"
+
+
 # --- 2. monthly columns -------------------------------------------------------
 
 
@@ -203,6 +267,25 @@ def test_monthly_columns_on_empty_input_is_empty_and_parses():
     root = parse(charts.monthly_columns(metrics.monthly_trend([])))
 
     assert marks(root) == []
+
+
+def test_monthly_columns_keeps_every_tick_inside_the_plot():
+    """A 45-high column scales to an axis that tops out at 50 — and 50 must be on the plot.
+
+    Scaling on the tallest column instead pushes the top gridline off the top of the
+    viewBox, where its label renders clipped or invisible.
+    """
+    trend = metrics.MonthlyTrend(
+        months=(metrics.MonthStat(month="2026-05", label="May", counts={"F2F Call": 45}, total=45),),
+        channels=("F2F Call",),
+        max_total=45,
+    )
+    root = parse(charts.monthly_columns(trend))
+    gridlines = [float(el.get("y1")) for el in root.iter("line") if el.get("class") == "gridline"]
+
+    assert svgcore.ticks(45.0)[-1] == 50.0, "the axis top rounds up to 50"
+    assert min(gridlines) == pytest.approx(charts.PLOT_TOP), "the top tick sits on the plot top"
+    assert max(gridlines) == pytest.approx(charts.PLOT_TOP + charts.PLOT_HEIGHT)
 
 
 # --- 3. specialty heatmap -----------------------------------------------------

@@ -271,6 +271,17 @@ def read_csv(path: str | Path) -> list[dict[str, str]]:
         return [dict(row) for row in csv.DictReader(handle)]
 
 
+def read_header(path: str | Path) -> list[str]:
+    """The first row's column names, normalized the same way the rows are.
+
+    A headers-only export reads back as zero rows, and so does a file that is not an
+    export at all. This is what tells those two apart: the first is an empty report,
+    the second is the wrong file.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as handle:
+        return list(_normalize_headers(dict.fromkeys(next(csv.reader(handle), []), "")))
+
+
 def _cell(value: object) -> str:
     if value is None:
         return ""

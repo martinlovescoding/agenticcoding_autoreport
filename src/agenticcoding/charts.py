@@ -10,8 +10,9 @@ Three rules the tests enforce:
 * **Colour follows the entity, not the rank.** `channel_token` maps a channel to its
   slot by position in `schema.CHANNELS`, so a channel keeps its colour when it moves
   up or down the ranking.
-* **Text never wears a series colour.** Labels use CSS classes; only data marks use
-  `paint`. That is also what keeps `fills()` in the tests meaning "series colours".
+* **Text never wears a series colour.** Data marks carry the identity; a label's own
+  fill may only ever be an `-ink` token — a colour chosen for readability on the surface
+  behind it. That is also what keeps `fills()` in the tests meaning "series colours".
 * **Every mark is reachable.** Each one carries a `data-tip`, and every chart has a
   table twin in the report, so no value exists only inside a hover.
 """
@@ -22,7 +23,11 @@ from . import metrics, schema, svgcore
 
 # --- shared geometry ----------------------------------------------------------
 
-WIDTH = 640
+WIDTH = 720
+# The plot stops at 576 and the remaining 144px is the value-label margin: a bar's
+# value is written just outside its data end, so the widest label the data can produce
+# ("48 · 26.1 %", about 80px at 11px monospace) has to fit between there and the edge.
+# At 640 the label was clipped by the viewBox instead.
 PLOT_WIDTH = 480
 LABEL_GUTTER = 96
 
@@ -42,9 +47,6 @@ GAP = 2.0
 # Magnitude ramp for the heatmap: one hue, light to dark. The categorical channel
 # slots are for identity and must not be reused here.
 SEQUENTIAL: tuple[str, ...] = ("seq-1", "seq-2", "seq-3", "seq-4", "seq-5")
-
-# Cells deep enough in the ramp to need light ink on top of them.
-_INK_FLIP = 3
 
 
 def channel_token(channel: str) -> str:
@@ -113,13 +115,16 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
         return ""
 
     tallest = max(row.interactions for row in mix.rows)
-    x_scale = svgcore.linear((0.0, float(tallest)), (0.0, float(PLOT_WIDTH)))
+    # The scale runs to the axis top, not to the largest bar. Scaling on the bar puts
+    # the last gridline beyond the edge of the plot the bars are measured against.
+    ticks = svgcore.ticks(float(tallest))
+    x_scale = svgcore.linear((0.0, ticks[-1]), (0.0, float(PLOT_WIDTH)))
     plot_bottom = PLOT_TOP + len(mix.rows) * (BAR_HEIGHT + ROW_GAP) - ROW_GAP
 
     parts: list[str] = []
 
     # Grid first, so the bars sit on top of it rather than behind it.
-    for tick in svgcore.ticks(float(tallest)):
+    for tick in ticks:
         x = LABEL_GUTTER + x_scale(tick)
         parts.append(_gridline(x, PLOT_TOP, x, plot_bottom))
         parts.append(
@@ -132,9 +137,11 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
     for index, row in enumerate(mix.rows):
         y = PLOT_TOP + index * (BAR_HEIGHT + ROW_GAP)
         width = x_scale(row.interactions)
+        # `share` rather than `fmt`: the table twin rounds a share to one decimal, and
+        # the same number must not appear two ways on one page.
         tip = (
             f"{row.channel}: {row.interactions} interactions "
-            f"({svgcore.fmt(row.share)} %), {row.hcps} HCPs, "
+            f"({svgcore.share(row.share)}), {row.hcps} HCPs, "
             f"avg engagement {svgcore.fmt(row.avg_engagement)}"
         )
         parts.append(
@@ -156,7 +163,7 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
         )
         parts.append(
             svgcore.element(
-                "text", f"{row.interactions} · {svgcore.fmt(row.share)} %",
+                "text", f"{row.interactions} · {svgcore.share(row.share)}",
                 cls="value-label", x=LABEL_GUTTER + width + 8, y=y + BAR_HEIGHT / 2 + 4,
             )
         )
@@ -173,6 +180,10 @@ def monthly_columns(trend: metrics.MonthlyTrend) -> str:
     The stack is scaled so that the tallest month *including its surface gaps* fills
     the plot exactly. Scaling on the raw total instead would push the top segment past
     the axis by `(segments - 1) × gap`.
+
+    The scale runs to the axis top rather than to `max_total`, so every gridline the
+    axis draws lands inside the plot. Scaling on the data puts the top tick above the
+    viewBox, where it renders clipped.
     """
     if not trend.months:
         return ""
@@ -180,14 +191,15 @@ def monthly_columns(trend: metrics.MonthlyTrend) -> str:
     plot_bottom = PLOT_TOP + PLOT_HEIGHT
     widest = max(sum(1 for count in month.counts.values() if count > 0) for month in trend.months)
     usable = PLOT_HEIGHT - max(0, widest - 1) * GAP
-    y_scale = svgcore.linear((0.0, float(trend.max_total)), (0.0, float(usable)))
+    ticks = svgcore.ticks(float(trend.max_total))
+    y_scale = svgcore.linear((0.0, ticks[-1]), (0.0, float(usable)))
 
     band = PLOT_WIDTH / len(trend.months)
     bar_width = min(24.0, band * 0.7)
 
     parts: list[str] = []
 
-    for tick in svgcore.ticks(float(trend.max_total)):
+    for tick in ticks:
         y = plot_bottom - y_scale(tick)
         parts.append(_gridline(LABEL_GUTTER, y, LABEL_GUTTER + PLOT_WIDTH, y))
         parts.append(
@@ -302,10 +314,15 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
                     },
                 )
             )
+            # The ink is a colour decision and lives with the other colours, one token
+            # per ramp step. Choosing it here by depth would be a second definition of
+            # the theme: the ramp runs light→dark on a light surface and dark→light on
+            # a dark one, so the same depth is a dark cell in one mode and a pale one in
+            # the other. The template owns which ink each step needs.
             parts.append(
                 svgcore.element(
-                    "text", svgcore.fmt(value),
-                    cls=f"cell-value {'ink-light' if depth >= _INK_FLIP else 'ink-dark'}",
+                    "text", svgcore.fmt(value), cls="cell-value",
+                    style=svgcore.paint(f"{SEQUENTIAL[depth]}-ink"),
                     x=x + cell_width / 2, y=y + cell_height / 2 + 4,
                     **{"text-anchor": "middle"},
                 )
