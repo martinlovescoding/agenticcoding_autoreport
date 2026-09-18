@@ -61,13 +61,16 @@ def _attr(value: object) -> str:
     return str(value)
 
 
-def element(tag: str, text: object = None, **attributes: object) -> str:
+def element(tag: str, text: object = None, cls: str | None = None, **attributes: object) -> str:
     """Build one SVG element, escaping both its attributes and its text.
 
     Attributes whose value is `None` are omitted rather than rendered as `None`, so
-    callers can pass an optional tooltip or title straight through.
+    callers can pass an optional tooltip or title straight through. `class` arrives
+    through `cls` because it is a Python keyword; it is emitted first so the mark
+    selector is easy to find in the rendered source.
     """
-    rendered = "".join(
+    rendered = "" if cls is None else f' class="{esc(cls)}"'
+    rendered += "".join(
         f' {name}="{esc(_attr(value))}"'
         for name, value in attributes.items()
         if value is not None

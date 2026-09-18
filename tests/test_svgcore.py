@@ -93,6 +93,18 @@ def test_element_renders_a_custom_property_style_attribute():
     assert 'style="fill:var(--ch-1)"' in rendered
 
 
+def test_element_renders_a_class_attribute():
+    """`class` is a Python keyword, so it needs its own parameter name."""
+    assert svgcore.element("rect", x=0, cls="mark") == '<rect class="mark" x="0"/>'
+
+
+def test_element_puts_class_before_the_other_attributes():
+    """Class first keeps the mark selector readable in the rendered source."""
+    rendered = svgcore.element("rect", x=0, cls="mark", style=svgcore.paint("ch-1"))
+
+    assert rendered.startswith('<rect class="mark" ')
+
+
 # --- scales -------------------------------------------------------------------
 
 
