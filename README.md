@@ -94,17 +94,27 @@ refuses to build.
 template defines the slots:
 
 ```
---surface-1  --surface-2  --text-primary  --text-secondary  --text-muted
---grid  --axis
+--bg  --card  --tile            /* the page, a chart card, a grey tile */
+--band-bg  --band-fg  --band-muted
+--text-primary  --text-secondary  --text-muted
+--grid  --axis  --accent  --tip-bg  --tip-fg
+--kpi-a … --kpi-c
 --ch-1 … --ch-7          /* the seven channels, in schema order */
 --seq-1 … --seq-5        /* magnitude, one hue light→dark, plus a -ink per step */
 ```
 
 Colour follows the **entity, not the rank**: `ch-4` is Rep Email wherever it ranks. Text
 never wears a series colour — a label's fill is only ever an `-ink` token, chosen for
-readability on the surface behind it. Dark mode is defined twice, under both
-`@media (prefers-color-scheme: dark)` and `:root[data-theme="dark"]`, so a theme toggle
-wins in either direction.
+readability on the surface behind it. Every text token is picked to clear 4.5:1 on every
+surface it can land on, in both themes, which is why the ink is not simply inherited from
+the design's palette.
+
+Three theme states have to resolve, not two: the bare `:root` block is the complete light
+palette, because an unstamped document is what most viewers see; the dark palette is
+re-declared under `@media (prefers-color-scheme: dark)` guarded as
+`:root:not([data-theme="light"])`, and again under `:root[data-theme="dark"]`, so an
+explicit choice beats the system in either direction. The inverted KPI band re-points the
+text tokens at its own ink, so one set of rules styles it in both themes.
 
 **Safety net.** `tests/test_template_slots.py` compares the slots in the template against
 the keys `report.py` supplies, in both directions, and re-derives the palette from the
@@ -117,9 +127,12 @@ or an unreadable ink fails a test instead of rendering a hole.
 uv run pytest
 ```
 
-300 tests. Beyond the pipeline and the charts, three of them open the rendered page in a
-real browser and measure it at 400px and 1280px — a page that scrolls sideways is a layout
-bug no unit test can see. They skip when no Chrome or Chromium is installed.
+309 tests. Beyond the pipeline and the charts, five of them open the rendered page in a
+real browser and measure it — at 400px and at 1280px. A page that scrolls sideways, or a
+chart whose type shrinks to an unreadable size when it is scaled to a phone, is a layout
+bug no unit test can see: the page measures the chart's rendered width against its
+viewBox and reports the smallest text the reader actually gets. They skip when no Chrome
+or Chromium is installed.
 
 ## Offline guarantee
 
@@ -137,6 +150,15 @@ at all.
   therefore never relies on telling two distant channels apart by colour.
 - The magnitude ramp is a five-step approximation of the engagement range, not a
   continuous scale. Cells within one step are not distinguishable by shade.
+- **On a phone the charts scroll inside their own card.** Scaled to a 400px screen the
+  charts' 11px axis numbers rendered at 4.8px, so below 640px a chart keeps a 620px floor
+  and its card scrolls instead — legible type, but the longest bar's value label sits off
+  the right edge until you scroll. The page body itself never scrolls sideways, and the
+  table twin under each chart has every number in it without any scrolling at all.
+- **A chart is always drawn on the surface its palette was validated against**, so the
+  trend chart's card stays light inside the dark KPI band rather than inverting with it.
+  The band is a typographic device, not a theme: inverting the chart with it would put the
+  light-mode hues on a near-black ground, which is a combination no palette check covers.
 - `03/04/2026` is read as 3 April. The convention is documented here rather than inferred
   per file; an export that means 4 March must be converted before it reaches this tool.
 - The page is a snapshot. Filters, drill-down and cross-chart selection are out of scope.
