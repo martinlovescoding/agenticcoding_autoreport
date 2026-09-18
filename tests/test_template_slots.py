@@ -13,6 +13,7 @@ These tests are the reason the handoff is a template edit and not a code change.
 
 import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
@@ -21,6 +22,12 @@ from conftest import SAMPLE
 
 LIGHT_SCOPE = ":root"
 DARK_SCOPES = (':root:not([data-theme="light"])', ':root[data-theme="dark"]')
+
+# Both templates, held to the same contract. `report.html` is what the tool renders;
+# `design-template.html` is the starter a designer restyles. The starter is only worth
+# handing over if it is complete, so it is checked exactly as the live design is — by
+# the same tests, not by a second set that would drift out of step with them.
+TEMPLATES = ("report.html", "design-template.html")
 
 
 def fragments() -> tuple[str, ...]:
@@ -120,9 +127,9 @@ def _value_labels(template: str, fragment: str) -> list[tuple[str, str]]:
     return pairs
 
 
-@pytest.fixture
-def template() -> str:
-    return report.load_template()
+@pytest.fixture(params=TEMPLATES)
+def template(request) -> str:
+    return report.load_template(request.param)
 
 
 @pytest.fixture
@@ -132,9 +139,22 @@ def slots() -> dict[str, str]:
     )
 
 
-def test_the_template_can_be_loaded():
-    """`uv_build` package data is not guaranteed, so this is the canary for it."""
-    assert "<style>" in report.load_template()
+@pytest.mark.parametrize("name", TEMPLATES)
+def test_the_template_can_be_loaded(name):
+    """`uv_build` package data is not guaranteed, so this is the canary for it.
+
+    Both files are package data, so both are checked: a design template that does
+    not ship is a handoff that arrives as a missing file.
+    """
+    assert report.load_template(name) == (
+        Path(report.__file__).resolve().parent / "templates" / name
+    ).read_text("utf-8")
+
+
+def test_the_design_template_is_not_the_rendered_one():
+    """They are separate files. A designer restyling the starter must not be
+    quietly restyling the report the pipeline produces."""
+    assert report.load_template() != report.load_template("design-template.html")
 
 
 def test_every_slot_the_template_asks_for_is_supplied(template, slots):
@@ -234,8 +254,28 @@ def test_every_step_of_the_ramp_has_an_ink_defined_for_it(template, mode):
     assert not missing, f"{mode} mode defines no ink for {missing}"
 
 
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_every_step_of_the_ramp_is_readable_on_its_own_cell(template, mode):
+    """Every step, not only the ones today's sample happens to reach.
+
+    The heatmap test above reads the cells this dataset produced, and a small
+    dataset does not span the ramp: with the fixture below, step 4 is never drawn,
+    so an unreadable ink on step 4 passed every check in this file. The steps are
+    a closed set, so they are checked as one.
+    """
+    tokens = palette(template, mode)
+
+    unreadable = [
+        (step, round(contrast(tokens[f"{step}-ink"], tokens[step]), 2))
+        for step in charts.SEQUENTIAL
+        if contrast(tokens[f"{step}-ink"], tokens[step]) < 4.5
+    ]
+
+    assert not unreadable, f"{mode} mode ramp inks are unreadable on: {unreadable}"
+
+
 def test_the_page_shell_is_reachable_without_the_installed_package(monkeypatch):
     """A repo checkout must be able to render even if the package data did not ship."""
-    monkeypatch.setattr(report, "_packaged_template", lambda: None)
+    monkeypatch.setattr(report, "_packaged_template", lambda name: None)
 
     assert "<style>" in report.load_template()

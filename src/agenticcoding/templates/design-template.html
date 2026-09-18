@@ -1,0 +1,423 @@
+<!--
+  Design template — a reusable starting point for a new report design.
+
+  This file is NOT the template the tool renders. That one is `report.html`, beside
+  this file. This is the shell you copy when you want a different design: rename it
+  over `report.html`, or point `report.load_template()` at it, then restyle.
+
+  It is deliberately plain — a design you would read, not one you would present. Its
+  job is to be complete: it carries all 24 slots, all the palette tokens, the chart
+  classes, the theme scopes and the layout rules, so that everything the contract
+  requires is already in front of you when you start.
+
+  `tests/test_template_slots.py` runs the *same* contract checks against this file as
+  against `report.html`: slot parity in both directions, every palette slot defined,
+  every chart class styled, both dark scopes identical, every heatmap value legible on
+  the cell under it. Restyle it freely — if you add a section, take a slot out, or
+  change an ink, the suite tells you what broke. That is the whole design handoff.
+
+  The rules a new design has to keep:
+
+    {{NAME}}    escaped text   — anything that came out of the CSV
+    {{{NAME}}}  raw HTML       — only markup this program rendered itself
+
+  HTML comments are neither substituted nor shipped. A slot the view model does not
+  supply raises, rather than rendering an empty hole.
+
+  Palette slot names are part of the contract too: the charts name `--ch-3` and
+  `--seq-2-ink`, never a colour. Keep the names; change the values.
+
+    --bg --card --tile          the page, a card, a quiet panel
+    --text-primary --text-secondary --text-muted
+    --grid --axis --accent --tip-bg --tip-fg
+    --ch-1 … --ch-7             identity, one per channel, in schema order
+    --seq-1 … --seq-5           magnitude, one hue light→dark, plus a -ink per step
+-->
+
+<title>Multichannel Engagement</title><style>
+  /* --- tokens ---------------------------------------------------------------
+     One block per theme. The bare `:root` block is the *complete* light palette:
+     a viewer on "system" gets no stamp and no media query match on a light OS, so
+     a token defined only inside a media query would leave them with no colour.
+     The dark palette is then declared twice, identically — once behind the OS
+     preference, once behind the toggle — so an explicit choice wins in both
+     directions. A token the two dark scopes disagree on leaves the page half-lit.
+
+     These values are the validated defaults. Swap them for a brand set, then run
+     the suite: the heatmap ink check is computed, not eyeballed. */
+  :root {
+    color-scheme: light;
+
+    --bg:      #ffffff;
+    --card:    #fbfcfd;
+    --tile:    #eef1f5;
+    --text-primary:   #14181d;
+    --text-secondary: #3f4750;
+    --text-muted:     #5b636d;
+    --grid:    #e3e8ee;
+    --axis:    #c8d0d9;
+    --accent:  #0a5ec2;
+    --tip-bg:  rgba(20, 24, 29, .95);
+    --tip-fg:  #ffffff;
+
+    /* Identity. One slot per channel, in schema order, never by rank — a channel
+       keeps its hue when it changes place, so a filter never repaints survivors.
+       Three of these sit below 3:1 on a white surface (aqua, yellow, magenta): that
+       is permitted because identity is never colour alone — every bar is directly
+       labelled and every chart has a table twin under it. */
+    --ch-1: #2a78d6;
+    --ch-2: #eb6834;
+    --ch-3: #1baf7a;
+    --ch-4: #eda100;
+    --ch-5: #e87ba4;
+    --ch-6: #008300;
+    --ch-7: #4a3aa7;
+
+    /* Magnitude. One hue, light to dark — never the categorical slots. Each step
+       carries the ink its own cell needs, so a shade and its text are one row a
+       reader can check rather than a rule inferred from depth. */
+    --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
+    --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #256abf;  --seq-4-ink: #ffffff;
+    --seq-5: #104281;  --seq-5-ink: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --bg:      #0f1216;
+      --card:    #161a1f;
+      --tile:    #1d232a;
+      --text-primary:   #eef1f5;
+      --text-secondary: #b3bcc6;
+      --text-muted:     #98a2ad;
+      --grid:    #262d35;
+      --axis:    #3a434d;
+      --accent:  #6bb0ff;
+      --tip-bg:  rgba(238, 241, 245, .95);
+      --tip-fg:  #0f1216;
+
+      --ch-1: #3987e5;
+      --ch-2: #d95926;
+      --ch-3: #199e70;
+      --ch-4: #c98500;
+      --ch-5: #d55181;
+      --ch-6: #0a9c0a;
+      --ch-7: #9085e9;
+
+      /* The ramp runs the other way here: the deepest value is the lightest cell,
+         and the lowest step has to clear the surface to read as a cell at all.
+         Ink is re-paired to match. */
+      --seq-1: #256abf;  --seq-1-ink: #ffffff;
+      --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+      --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+      --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+      --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+    }
+  }
+
+  /* The same palette again for the stamp. Keep the two blocks byte-identical. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg:      #0f1216;
+    --card:    #161a1f;
+    --tile:    #1d232a;
+    --text-primary:   #eef1f5;
+    --text-secondary: #b3bcc6;
+    --text-muted:     #98a2ad;
+    --grid:    #262d35;
+    --axis:    #3a434d;
+    --accent:  #6bb0ff;
+    --tip-bg:  rgba(238, 241, 245, .95);
+    --tip-fg:  #0f1216;
+
+    --ch-1: #3987e5;
+    --ch-2: #d95926;
+    --ch-3: #199e70;
+    --ch-4: #c98500;
+    --ch-5: #d55181;
+    --ch-6: #0a9c0a;
+    --ch-7: #9085e9;
+
+    --seq-1: #256abf;  --seq-1-ink: #ffffff;
+    --seq-2: #3987e5;  --seq-2-ink: #0d1117;
+    --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
+    --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
+    --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+  }
+
+  /* --- base ----------------------------------------------------------------- */
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  /* The body paints its own ground: the host paints one behind the page in *its*
+     theme, so a transparent body borrows the wrong one. */
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* The side gutter is set once, here, and never as a shorthand that zeroes it. */
+  .doc {
+    max-width: 880px;
+    margin: 0 auto;
+    padding-block: 40px 64px;
+    padding-inline: clamp(16px, 4vw, 32px);
+  }
+
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -.01em; }
+  h2 { font-size: 21px; margin: 0 0 4px; }
+  .period { color: var(--text-secondary); margin: 0 0 4px; }
+  .lede { color: var(--text-secondary); margin: 0 0 32px; max-width: 62ch; }
+  section { margin-top: 48px; }
+  .caption { color: var(--text-secondary); margin: 0 0 16px; }
+
+  /* --- headline figures ------------------------------------------------------ */
+  .kpis {
+    display: grid;
+    /* minmax(0, 1fr), not 1fr: a track floors at its items' min-content width, and
+       so does a grid item — both have to be defeated before a child can shrink. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .kpi { min-width: 0; background: var(--tile); border-radius: 10px; padding: 16px 18px; }
+  .kpi b { display: block; font-size: 32px; font-weight: 650; letter-spacing: -.02em; }
+  .kpi small { display: block; color: var(--text-secondary); }
+  .kpi span { display: block; color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+  /* --- charts ---------------------------------------------------------------- */
+  .card { background: var(--card); border: 1px solid var(--grid); border-radius: 10px; padding: 20px; }
+  .chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+  /* Chart ink. Text wears text tokens; the only fill a text element may name is an
+     `-ink`, which is a readability choice rather than a series. */
+  .chart .grid { stroke: var(--grid); stroke-width: 1; }
+  .chart .axis { stroke: var(--axis); stroke-width: 1; }
+  .chart .tick { fill: var(--text-muted); font-size: 11px; }
+  .chart .label { fill: var(--text-secondary); font-size: 12px; }
+  .chart .value {
+    fill: var(--text-primary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    /* A value written past a long bar falls across a gridline. The stroke paints
+       behind the fill, so a surface-coloured stroke punches it out of the rule. */
+    stroke: var(--card);
+    stroke-width: 3px;
+    paint-order: stroke fill;
+  }
+  .chart .cell-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chart .mark { transition: opacity .12s; }
+  .chart:hover .mark { opacity: .6; }
+  .chart .mark:hover, .chart .mark:focus-visible { opacity: 1; }
+  .chart .mark:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2px; }
+  /* An absent combination is drawn, not left blank: a blank is indistinguishable
+     from a rendering bug, and from a zero. */
+  .chart .cell-empty { fill: none; stroke: var(--axis); stroke-dasharray: 3 3; }
+
+  .legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0 0 14px;
+    padding: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .legend li { display: flex; align-items: center; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+
+  /* --- tables ---------------------------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; }
+  tbody th { color: var(--text-primary); font-size: 14px; font-weight: 400; }
+
+  details { margin-top: 16px; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 14px; }
+  details .scroller { margin-top: 10px; }
+
+  /* Only a table or a chart may be wider than the page, each inside a box that
+     scrolls by itself: the body must never scroll sideways. */
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
+
+  .takeaway { margin: 16px 0 0; color: var(--text-secondary); }
+  .takeaway b { color: var(--text-primary); font-weight: 650; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 16px;
+    border-top: 1px solid var(--grid);
+    color: var(--text-muted);
+    font-size: 13px;
+    /* A filesystem path is one unbreakable token; left alone it is wider than a
+       phone and takes the layout with it. */
+    overflow-wrap: anywhere;
+  }
+
+  /* --- the hover layer -------------------------------------------------------- */
+  .tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 20;
+    max-width: min(300px, 78vw);
+    padding: 6px 9px;
+    border-radius: 6px;
+    background: var(--tip-bg);
+    color: var(--tip-fg);
+    font-size: 12px;
+    line-height: 1.45;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .1s;
+  }
+  .tooltip[data-shown] { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  @media (max-width: 640px) {
+    /* A chart is drawn in a 720-unit viewBox: scaled to a phone its 11px axis
+       numbers render at under 5px, which is not text. It keeps a legible minimum
+       and its own box scrolls instead. */
+    .card .scroller .chart { min-width: 620px; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+
+<div class="doc">
+  <header>
+    <h1>Multichannel engagement report</h1>
+    <p class="period">{{PERIOD_LABEL}}</p>
+    <p class="lede">{{HERO_TAGLINE}}</p>
+  </header>
+
+  <section aria-label="Headline figures">
+    <div class="kpis">
+      <div class="kpi">
+        <b>{{KPI_INTERACTIONS}}</b>
+        <small>Interactions</small>
+        <span>{{KPI_INTERACTIONS_NOTE}}</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_HCPS}}</b>
+        <small>HCPs reached</small>
+        <span>{{KPI_HCPS_NOTE}}</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_AVG_ENGAGEMENT}}</b>
+        <small>Mean engagement</small>
+        <span>Score 0–100</span>
+      </div>
+      <div class="kpi">
+        <b>{{KPI_EMAIL_OPEN_RATE}}</b>
+        <small>Email open rate</small>
+        <span>{{KPI_EMAIL_OPEN_RATE_NOTE}}</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="channels" aria-labelledby="channels-h">
+    <h2 id="channels-h">Channel mix</h2>
+    <p class="caption">Volume per channel, and how well each one landed.</p>
+    <div class="card"><div class="scroller">{{{CHANNEL_CHART}}}</div></div>
+    <p class="takeaway">{{{CHANNEL_TAKEAWAY}}}</p>
+    <details>
+      <summary>Table view — volume, share, reach and mean engagement</summary>
+      <div class="scroller">{{{CHANNEL_TABLE}}}</div>
+    </details>
+  </section>
+
+  <section id="trend" aria-labelledby="trend-h">
+    <h2 id="trend-h">Monthly trend</h2>
+    <p class="caption">The same volume, one stack per month.</p>
+    <div class="card">
+      {{{TREND_LEGEND}}}
+      <div class="scroller">{{{TREND_CHART}}}</div>
+    </div>
+    <p class="takeaway">{{{TREND_TAKEAWAY}}}</p>
+    <details>
+      <summary>Table view — interactions per month, by channel</summary>
+      <div class="scroller">{{{TREND_TABLE}}}</div>
+    </details>
+  </section>
+
+  <section id="specialties" aria-labelledby="specialties-h">
+    <h2 id="specialties-h">By specialty</h2>
+    <p class="caption">Mean engagement per specialty and channel.</p>
+    <div class="card"><div class="scroller">{{{SPECIALTY_CHART}}}</div></div>
+    <p class="takeaway">{{{SPECIALTY_TAKEAWAY}}}</p>
+    <details>
+      <summary>Table view — mean engagement per specialty and channel</summary>
+      <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
+    </details>
+  </section>
+
+  <section id="data" aria-labelledby="data-h">
+    <h2 id="data-h">Data basis</h2>
+    <p class="caption">{{QUALITY_HEADLINE}}</p>
+    <div class="scroller">{{{QUALITY_TABLE}}}</div>
+    <p class="takeaway">{{MISSING_SCORE_NOTE}}</p>
+  </section>
+
+  <footer>
+    Generated from {{SOURCE_FILE}} on {{GENERATED_AT}}. The page is self-contained: it
+    makes no network requests and can be read offline.
+  </footer>
+</div>
+
+<script>
+  /* The hover layer. A chart is readable without it — every value it encodes is also
+     written into the table view beneath it — so this only adds the fast path.
+     `textContent`, never `innerHTML`: the tooltip carries labels that came out of a
+     CSV export. */
+  (function () {
+    var tip = document.createElement("div");
+    tip.className = "tooltip";
+    document.body.appendChild(tip);
+
+    function place(target) {
+      var text = target.getAttribute("data-tip");
+      if (!text) return;
+      tip.textContent = text;
+      tip.setAttribute("data-shown", "");
+
+      var box = target.getBoundingClientRect();
+      var size = tip.getBoundingClientRect();
+      var left = box.left + box.width / 2 - size.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - size.width - 8));
+      var top = box.top - size.height - 10;
+      if (top < 8) top = box.bottom + 10;
+      tip.style.transform =
+        "translate(" + Math.round(left) + "px, " + Math.round(top) + "px)";
+    }
+
+    function hide() {
+      tip.removeAttribute("data-shown");
+    }
+
+    var marks = document.querySelectorAll("[data-tip]");
+    Array.prototype.forEach.call(marks, function (mark) {
+      /* Keyboard reaches the same values the pointer does. */
+      mark.setAttribute("tabindex", "0");
+      mark.addEventListener("pointerenter", function () { place(mark); });
+      mark.addEventListener("pointerleave", hide);
+      mark.addEventListener("focus", function () { place(mark); });
+      mark.addEventListener("blur", hide);
+    });
+
+    window.addEventListener("scroll", hide, { passive: true });
+  })();
+</script>

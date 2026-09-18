@@ -57,25 +57,29 @@ _SHELL = """<!doctype html>
 # --- the template -------------------------------------------------------------
 
 
-def _packaged_template() -> str | None:
+def _packaged_template(name: str) -> str | None:
     """The template as installed package data, if the build shipped it."""
     try:
-        return (resources.files(__package__) / "templates" / "report.html").read_text("utf-8")
+        return (resources.files(__package__) / "templates" / name).read_text("utf-8")
     except (FileNotFoundError, ModuleNotFoundError, TypeError, OSError):
         return None
 
 
-def load_template() -> str:
-    """The report template, from the installed package or from the source tree.
+def load_template(name: str = "report.html") -> str:
+    """A template from the installed package, or from the source tree.
 
     `uv_build` package data is not something to rely on, so a checkout falls back to
     reading the file beside this module. Both paths are the same file in a source
     checkout, which is exactly the point: rendering must work either way.
+
+    `name` selects among the files in `templates/`. The default is the design the
+    tool renders; naming another one — `design-template.html`, or a file you add
+    beside it — is how a new design is tried without touching the live one.
     """
-    packaged = _packaged_template()
+    packaged = _packaged_template(name)
     if packaged is not None:
         return packaged
-    return (Path(__file__).resolve().parent / "templates" / "report.html").read_text("utf-8")
+    return (Path(__file__).resolve().parent / "templates" / name).read_text("utf-8")
 
 
 def document(slots: dict[str, str], template: str) -> str:
