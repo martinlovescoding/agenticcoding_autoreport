@@ -224,13 +224,47 @@ def test_monthly_columns_labels_every_month(sample):
     ]
 
 
-def test_monthly_columns_has_a_legend_entry_for_every_channel(sample):
-    """Three or more series means a legend, always — identity is never colour alone."""
-    root = parse(charts.monthly_columns(metrics.monthly_trend(sample)))
-    labels = [el.text for el in root.iter("text")]
+def test_trend_legend_names_every_channel_and_swatches_it(sample):
+    """Three or more series means a legend, always — identity is never colour alone.
 
+    The legend is HTML, not SVG: the delivered design lays it out as a wrapping list
+    above the chart, which is a thing a browser does well and a `<text>` run does not.
+    """
+    legend = charts.trend_legend(metrics.monthly_trend(sample))
+
+    assert '<ul class="legend">' in legend
     for channel in ("F2F", "Rep Email", "Web"):
-        assert channel in labels
+        assert f"</i>{channel}</li>" in legend, channel
+
+
+def test_trend_legend_swatches_carry_a_slot_not_a_colour(sample):
+    """The swatch is the channel's own identity, and it must survive a design swap."""
+    legend = charts.trend_legend(metrics.monthly_trend(sample))
+
+    assert "background:var(--ch-1)" in legend
+    assert "background:var(--ch-7)" in legend
+    assert "#" not in legend
+
+
+def test_trend_legend_on_no_months_is_empty():
+    assert charts.trend_legend(metrics.monthly_trend([])) == ""
+
+
+def test_numeric_axis_labels_wear_the_tick_class(sample):
+    """The design sets numbers in muted ink at 11px and names in secondary at 12px."""
+    rendered = charts.channel_bars(metrics.channel_mix(sample))
+
+    assert 'class="tick"' in rendered
+    assert 'class="axis-label"' not in rendered
+
+
+def test_category_labels_wear_the_label_class(sample):
+    rendered = charts.channel_bars(metrics.channel_mix(sample)) + charts.specialty_heatmap(
+        metrics.specialty_matrix(sample)
+    )
+
+    assert 'class="label"' in rendered
+    assert "F2F" in rendered
 
 
 def test_monthly_columns_leaves_a_surface_gap_between_stacked_segments(sample):
@@ -281,7 +315,7 @@ def test_monthly_columns_keeps_every_tick_inside_the_plot():
         max_total=45,
     )
     root = parse(charts.monthly_columns(trend))
-    gridlines = [float(el.get("y1")) for el in root.iter("line") if el.get("class") == "gridline"]
+    gridlines = [float(el.get("y1")) for el in root.iter("line") if el.get("class") == "grid"]
 
     assert svgcore.ticks(45.0)[-1] == 50.0, "the axis top rounds up to 50"
     assert min(gridlines) == pytest.approx(charts.PLOT_TOP), "the top tick sits on the plot top"

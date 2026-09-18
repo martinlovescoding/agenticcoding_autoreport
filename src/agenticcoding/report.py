@@ -162,6 +162,16 @@ def _row_means(matrix: metrics.SpecialtyMatrix) -> list[tuple[float, str]]:
 # --- the takeaways ------------------------------------------------------------
 
 
+def _bold(text: str) -> str:
+    """The emphasis an insight sentence carries, with its subject escaped first.
+
+    A takeaway goes into the page through a *raw* slot — it carries its own markup —
+    so every label inside it is escaped here, at the one place that knows which parts
+    of the sentence came out of the CSV.
+    """
+    return f"<b>{svgcore.esc(text)}</b>"
+
+
 def _channel_takeaway(mix: metrics.ChannelMix) -> str:
     if not mix.rows:
         return "No interactions were recorded in this period."
@@ -172,14 +182,14 @@ def _channel_takeaway(mix: metrics.ChannelMix) -> str:
         default=None,
     )
     sentence = (
-        f"{leader.channel} carries the most activity — {leader.interactions} interactions, "
-        f"{_share(leader.share)} of the total"
+        f"{_bold(leader.channel)} carries the most activity — {leader.interactions} "
+        f"interactions, {_share(leader.share)} of the total"
     )
     if best is not None:
         # Name the channel whenever it is not the one already named. "— and posts the
         # highest average engagement" reads as a fact about `leader`, so an unnamed
         # `best` would credit the volume leader with another channel's score.
-        subject = "— and posts" if best is leader else f"— and {best.channel} posts"
+        subject = "— and posts" if best is leader else f"— and {_bold(best.channel)} posts"
         sentence += f" {subject} the highest average engagement, at {svgcore.fmt(best.avg_engagement)}"
     return sentence + "."
 
@@ -190,10 +200,10 @@ def _trend_takeaway(trend: metrics.MonthlyTrend) -> str:
     peak = max(trend.months, key=lambda month: month.total)
     last = trend.months[-1]
     if len(trend.months) == 1:
-        return f"All {last.total} interactions fall in {last.label}."
+        return f"All {last.total} interactions fall in {_bold(last.label)}."
     return (
-        f"Volume peaked in {peak.label} at {peak.total} interactions and closed at "
-        f"{last.total} in {last.label}."
+        f"Volume peaked in {_bold(peak.label)} at {peak.total} interactions and closed "
+        f"at {last.total} in {last.label}."
     )
 
 
@@ -202,12 +212,34 @@ def _specialty_takeaway(matrix: metrics.SpecialtyMatrix) -> str:
     if not ranked:
         return "No specialty had a scored interaction in this period."
     if len(ranked) == 1:
-        return f"{ranked[0][1]} is the only specialty with scored interactions."
+        return f"{_bold(ranked[0][1])} is the only specialty with scored interactions."
     (top_value, top_name), (bottom_value, bottom_name) = ranked[0], ranked[-1]
     return (
-        f"{top_name} shows the strongest mean engagement at {svgcore.fmt(top_value)}, "
-        f"ahead of {bottom_name} at {svgcore.fmt(bottom_value)}."
+        f"{_bold(top_name)} shows the strongest mean engagement at "
+        f"{svgcore.fmt(top_value)}, ahead of {bottom_name} at {svgcore.fmt(bottom_value)}."
     )
+
+
+def _hero_tagline(kpis: metrics.Kpis, period: str) -> str:
+    """The sentence the page opens with, carrying its own two headline counts."""
+    return (
+        f"{kpis.interactions} interactions with {kpis.hcps} health care professionals "
+        f"from {period} — cleaned, analysed, and accounted for."
+    )
+
+
+def _hcps_note(kpis: metrics.Kpis) -> str:
+    """Interactions per HCP: the reach figure made comparable across periods."""
+    if not kpis.hcps:
+        return "no HCP recorded"
+    return f"{svgcore.fmt(kpis.interactions / kpis.hcps, 1)} interactions per HCP"
+
+
+def _click_note(kpis: metrics.Kpis) -> str:
+    """Clicks over opens — an unopened email cannot be clicked, so it is not counted."""
+    if kpis.email_click_rate is None:
+        return "no opens recorded"
+    return f"{svgcore.share(kpis.email_click_rate, 0)} of opens clicked"
 
 
 # --- the slot dictionary ------------------------------------------------------
@@ -237,13 +269,15 @@ def build_slots(
         "PERIOD_LABEL": period,
         "GENERATED_AT": generated_at,
         "SOURCE_FILE": source_file,
+        "HERO_TAGLINE": _hero_tagline(kpis, period),
         # the KPI strip
         "KPI_INTERACTIONS": _count(kpis.interactions),
+        "KPI_INTERACTIONS_NOTE": f"from {_count(quality.rows_in)} raw rows",
         "KPI_HCPS": _count(kpis.hcps),
+        "KPI_HCPS_NOTE": _hcps_note(kpis),
         "KPI_AVG_ENGAGEMENT": svgcore.fmt(kpis.avg_engagement),
-        "KPI_CHANNELS_USED": _count(len(mix.rows)),
-        "CHANNEL_TOTAL": _count(len(schema.CHANNELS)),
         "KPI_EMAIL_OPEN_RATE": _share(kpis.email_open_rate),
+        "KPI_EMAIL_OPEN_RATE_NOTE": _click_note(kpis),
         # data quality
         "QUALITY_HEADLINE": (
             f"{quality.rows_in} raw rows → {quality.rows_out} analysable "
@@ -260,7 +294,6 @@ def build_slots(
         ),
         # 1 · channel mix
         "CHANNEL_TAKEAWAY": _channel_takeaway(mix),
-        "CHANNEL_CAPTION": f"Interactions per channel, {period}.",
         "CHANNEL_CHART": charts.channel_bars(mix),
         "CHANNEL_TABLE": _table(
             ("Channel", "Interactions", "Share", "HCPs", "Avg engagement"),
@@ -277,7 +310,7 @@ def build_slots(
         ),
         # 2 · monthly trend
         "TREND_TAKEAWAY": _trend_takeaway(trend),
-        "TREND_CAPTION": f"Interactions per month, stacked by channel, {period}.",
+        "TREND_LEGEND": charts.trend_legend(trend),
         "TREND_CHART": charts.monthly_columns(trend),
         "TREND_TABLE": _table(
             ("Month", "Total", *trend.channels),
@@ -292,7 +325,6 @@ def build_slots(
         ),
         # 3 · specialty matrix
         "SPECIALTY_TAKEAWAY": _specialty_takeaway(matrix),
-        "SPECIALTY_CAPTION": f"Mean engagement score per specialty and channel, {period}.",
         "SPECIALTY_CHART": charts.specialty_heatmap(matrix),
         "SPECIALTY_TABLE": _table(
             ("Specialty", *matrix.channels),

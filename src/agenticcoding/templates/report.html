@@ -1,49 +1,68 @@
 <!--
   Multichannel engagement report — template.
 
-  This is the one file a designer replaces. Two contracts make that safe:
+  This is a FRAGMENT: no doctype, no <html>, no <head>, no <body>. The publisher
+  wraps it. Everything a designer needs is in this one file — the tokens, the
+  layout and the markup — and nothing here knows how a number was computed.
 
-  1. SLOTS. `{{NAME}}` is an escaped text value; `{{{NAME}}}` is pre-rendered markup
-     this program built (a chart, a table). Everything static — headings, labels,
-     units, copy, all of the styling — lives here, not in Python. Rename or drop a
-     slot and `tests/test_template_slots.py` fails immediately rather than rendering
-     a hole.
+  Slots, and the difference between them is a security boundary:
 
-  2. PALETTE. Charts never name a colour. They carry `style="fill:var(--ch-3)"` and
-     expect this file to define the slot. Redefine the tokens below and every chart
-     follows. The values shipped here are the validated reference palette; the
-     channel slots were checked for lightness band, chroma, colour-vision separation
-     and contrast against both surfaces before being used.
+    {{NAME}}    escaped text   — anything that came out of the CSV
+    {{{NAME}}}  raw HTML       — only markup this program rendered itself
 
-  The file is a fragment — no <html>, <head> or <body>. The shell is added by
-  `report.document()`, which also lifts this title and stylesheet into <head>.
-
-  Offline by construction: no external stylesheet, no font request, no script from
-  a CDN. `tests/test_report.py` asserts it.
+  HTML comments are neither substituted nor shipped, so this comment costs the
+  page nothing. A slot the view model does not supply raises rather than rendering
+  an empty hole, and `tests/test_template_slots.py` holds the two ends together.
 -->
-<title>Multichannel Engagement</title>
-<style>
+
+<title>Multichannel Engagement</title><style>
   /* --- tokens -------------------------------------------------------------
-     Every colour is declared here, in both themes, and components are styled
-     through the tokens only. The dark values are re-declared under both scopes:
-     the media query for the operating system, the [data-theme] scope for the
-     viewer's own toggle, so an explicit choice wins in either direction. */
+     Every colour the page can use is declared here, once per theme. Nothing
+     below this block names a colour: components are styled through the tokens,
+     which is what makes a palette change a change to this block alone.
+
+     Three theme states have to resolve, not two. `:root` is the complete light
+     palette — the state a viewer sees is the un-stamped document, so a token
+     defined only inside a media query would leave that reader with no colour at
+     all. The dark palette is then re-declared twice, identically: once behind
+     `prefers-color-scheme` for the operating system's choice, and once behind
+     `[data-theme="dark"]` for the viewer's own toggle, so an explicit choice
+     beats the system in either direction. */
   :root {
     color-scheme: light;
 
-    --plane:          #eef1f4;
-    --surface-1:      #fbfcfd;
-    --surface-2:      #f1f4f7;
-    --text-primary:   #0d1117;
-    --text-secondary: #4d565f;
-    --text-muted:     #6b747d;
-    --grid:           #dfe4ea;
-    --axis:           #c3cad2;
-    --border:         rgba(13, 17, 23, 0.10);
-    --accent:         #1f3d5c;
+    /* surfaces */
+    --bg:         #ffffff;
+    --card:       #ffffff;
+    --tile:       #f5f5f7;
+    --band-bg:    #000000;
+    --band-fg:    #f5f5f7;
+    --band-muted: #a1a1a6;
+    --nav-bg:     rgba(0, 0, 0, .8);
+    --nav-fg:     #e8e8ed;
 
-    /* Channel identity — the slot a channel keeps for the whole report, whatever
-       rank it holds in a given period. Never reassigned, never cycled. */
+    /* ink — each one clears 4.5:1 on every surface above it can land on */
+    --text-primary:   #1d1d1f;
+    --text-secondary: #5b5b60;
+    --text-muted:     #6e6e73;
+    --grid:           #e8e8ed;
+    --axis:           #d2d2d7;
+    --accent:         #0071e3;
+    --tip-bg:         rgba(29, 29, 31, .94);
+    --tip-fg:         #ffffff;
+
+    /* the KPI gradient — decoration on the inverted band, so it is read against
+       --band-bg rather than against a page surface */
+    --kpi-a: #6cb6ff;
+    --kpi-b: #a78bfa;
+    --kpi-c: #ff8ab3;
+
+    --frame-ring:   0 0 0 1px rgba(0, 0, 0, .05);
+    --frame-shadow: 0 20px 60px rgba(0, 0, 0, .06);
+
+    /* Identity — one slot per channel, in schema order, never by rank. A channel
+       keeps its colour when it moves up or down the ranking, so a filter or a new
+       period never repaints the survivors. */
     --ch-1: #2a78d6;  /* F2F Call */
     --ch-2: #eb6834;  /* Phone Call */
     --ch-3: #1baf7a;  /* Screen-to-Screen Call */
@@ -53,35 +72,44 @@
     --ch-7: #4a3aa7;  /* Web */
 
     /* Magnitude — one hue, light to dark. Never the categorical slots.
-       Each step carries the ink its own cell needs, so the pairing between a shade and
-       the text on it is one table a designer can read, not a rule inferred from depth. */
+       Each step carries the ink its own cell needs, so the pairing between a shade
+       and the text on it is one table a designer can read, not a rule inferred from
+       depth. */
     --seq-1: #cde2fb;  --seq-1-ink: #0d1117;
     --seq-2: #9ec5f4;  --seq-2-ink: #0d1117;
     --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
     --seq-4: #256abf;  --seq-4-ink: #ffffff;
     --seq-5: #104281;  --seq-5-ink: #ffffff;
-
-    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-            "Helvetica Neue", Arial, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-            "Liberation Mono", monospace;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
 
-      --plane:          #0b0d10;
-      --surface-1:      #15181c;
-      --surface-2:      #1c2025;
-      --text-primary:   #ffffff;
-      --text-secondary: #b9c0c7;
-      --text-muted:     #868f98;
-      --grid:           #262b31;
-      --axis:           #363c43;
-      --border:         rgba(255, 255, 255, 0.10);
-      --accent:         #7ea6c9;
+      --bg:         #000000;
+      --card:       #0b0b0d;
+      --tile:       #1d1d1f;
+      /* The band is near-black on a light page and *raised* on a dark one. An
+         automatic flip would make it the page itself, and the section would vanish. */
+      --band-bg:    #1d1d1f;
+      --band-fg:    #f5f5f7;
+      --band-muted: #a1a1a6;
+      --nav-bg:     rgba(20, 20, 22, .8);
+      --nav-fg:     #f5f5f7;
 
+      --text-primary:   #f5f5f7;
+      --text-secondary: #c7c7cc;
+      --text-muted:     #a1a1a6;
+      --grid:           #2a2a2d;
+      --axis:           #424245;
+      --accent:         #3f9bff;
+      --tip-bg:         rgba(245, 245, 247, .94);
+      --tip-fg:         #1d1d1f;
+
+      /* The ramp runs the other way on a dark surface: the deepest value is the
+         lightest cell. Its lowest step also has to clear the surface to read as a
+         cell at all, so the ramp starts one step up rather than at the darkest blue.
+         Ink is re-paired to match — every step clears 5.2:1. */
       --ch-1: #3987e5;
       --ch-2: #d95926;
       --ch-3: #199e70;
@@ -90,31 +118,40 @@
       --ch-6: #008300;
       --ch-7: #9085e9;
 
-      /* The ramp runs the other way on a dark surface: the deepest value is the
-         lightest cell. Its lowest step also has to clear the surface to read as a
-         cell at all, so the ramp starts one step up rather than at the darkest blue.
-         Ink is re-paired to match — every step clears 5.2:1. */
       --seq-1: #256abf;  --seq-1-ink: #ffffff;
       --seq-2: #3987e5;  --seq-2-ink: #0d1117;
       --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
       --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
       --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+
+      --frame-ring:   0 0 0 1px rgba(255, 255, 255, .08);
+      --frame-shadow: 0 20px 60px rgba(0, 0, 0, .6);
     }
   }
 
+  /* The same palette again for the stamp, so the toggle wins in both directions.
+     It must stay identical to the block above — a token the media query moves and
+     the stamp does not leaves the page half-lit in one of the two states. */
   :root[data-theme="dark"] {
     color-scheme: dark;
 
-    --plane:          #0b0d10;
-    --surface-1:      #15181c;
-    --surface-2:      #1c2025;
-    --text-primary:   #ffffff;
-    --text-secondary: #b9c0c7;
-    --text-muted:     #868f98;
-    --grid:           #262b31;
-    --axis:           #363c43;
-    --border:         rgba(255, 255, 255, 0.10);
-    --accent:         #7ea6c9;
+    --bg:         #000000;
+    --card:       #0b0b0d;
+    --tile:       #1d1d1f;
+    --band-bg:    #1d1d1f;
+    --band-fg:    #f5f5f7;
+    --band-muted: #a1a1a6;
+    --nav-bg:     rgba(20, 20, 22, .8);
+    --nav-fg:     #f5f5f7;
+
+    --text-primary:   #f5f5f7;
+    --text-secondary: #c7c7cc;
+    --text-muted:     #a1a1a6;
+    --grid:           #2a2a2d;
+    --axis:           #424245;
+    --accent:         #3f9bff;
+    --tip-bg:         rgba(245, 245, 247, .94);
+    --tip-fg:         #1d1d1f;
 
     --ch-1: #3987e5;
     --ch-2: #d95926;
@@ -129,455 +166,416 @@
     --seq-3: #6da7ec;  --seq-3-ink: #0d1117;
     --seq-4: #9ec5f4;  --seq-4-ink: #0d1117;
     --seq-5: #cde2fb;  --seq-5-ink: #0d1117;
+
+    --frame-ring:   0 0 0 1px rgba(255, 255, 255, .08);
+    --frame-shadow: 0 20px 60px rgba(0, 0, 0, .6);
   }
 
-  /* --- page ---------------------------------------------------------------- */
+  /* --- base ---------------------------------------------------------------- */
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  /* The body paints its own ground: the host paints one behind the page in *its*
+     theme, and a transparent body would borrow it. */
   body {
-    background: var(--plane);
+    margin: 0;
+    background: var(--bg);
     color: var(--text-primary);
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.55;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+      "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.45;
+    letter-spacing: -.01em;
     -webkit-font-smoothing: antialiased;
   }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-  .page {
-    max-width: 1060px;
-    margin-inline: auto;
-    padding-block: 30px 72px;
-    padding-inline: clamp(16px, 4vw, 34px);
+  /* --- navigation ---------------------------------------------------------- */
+  .nav {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    height: 48px;
+    background: var(--nav-bg);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
-
-  main { display: grid; gap: 36px; }
-
-  /* Both halves of the same default have to go. A grid *track* floors at its items'
-     min-content width, and a grid *item* floors at its own — so a table whose cells are
-     `white-space: nowrap` would widen its whole column, and the running text laid out
-     beside it, past the viewport, and the page would scroll sideways. `minmax(0, 1fr)`
-     lets the track shrink, `min-width: 0` lets the item inside it do the same, and
-     `.scroller` is then the only thing on the page that scrolls sideways — which is
-     where a wide table belongs. */
-  main, .masthead, .overview, .basis, .analysis, figure, details, .colophon {
-    grid-template-columns: minmax(0, 1fr);
+  .nav ul {
+    list-style: none;
+    margin: 0 auto;
+    /* The side gutter is 22px at every width: this is a padding *shorthand* whose
+       horizontal value is set, never zeroed. */
+    padding: 0 22px;
+    max-width: 1024px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    font-size: 12px;
+    color: var(--nav-fg);
   }
-  main > *, .overview > *, .basis > *, .analysis > *, figure > *, details > *,
-  .provenance > * {
-    min-width: 0;
+  .nav li:first-child { font-weight: 600; margin-right: auto; font-size: 14px; }
+  .nav li a { color: inherit; text-decoration: none; opacity: .8; }
+  .nav li a:hover { opacity: 1; }
+
+  /* --- sections ------------------------------------------------------------ */
+  .sec { padding: 104px 22px 96px; text-align: center; }
+  .sec .kicker { font-size: 19px; color: var(--text-secondary); font-weight: 600; margin: 0 0 6px; }
+  .sec h1 { margin: 0; font-size: 80px; font-weight: 600; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
+  .sec h2 { margin: 0; font-size: 56px; font-weight: 600; letter-spacing: -.015em; line-height: 1.07; text-wrap: balance; }
+  .sec .tag { margin: 14px auto 0; font-size: 24px; line-height: 1.25; color: var(--text-secondary); max-width: 720px; }
+
+  .cta { margin: 28px 0 0; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .cta a { display: inline-block; padding: 11px 22px; border-radius: 980px; font-size: 17px; text-decoration: none; }
+  .cta a.pri { background: var(--accent); color: #ffffff; }
+  .cta a.ghost { border: 1px solid var(--accent); color: var(--accent); }
+
+  /* --- the inverted band ---------------------------------------------------
+     A dark island inside a light page, and in dark mode a raised one. The band
+     re-points the text tokens at its own ink, so everything styled through them —
+     the kicker, the numbers and their notes — resolves against the band's ground
+     without a second set of rules. */
+  .band {
+    background: var(--band-bg);
+    color: var(--band-fg);
+    --text-primary: var(--band-fg);
+    --text-secondary: var(--band-muted);
+    --text-muted: var(--band-muted);
   }
-
-  h1, h2 { text-wrap: balance; margin: 0; }
-  p { margin: 0; }
-
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-
-  :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-
-  /* --- masthead ------------------------------------------------------------ */
-  .masthead { display: grid; gap: 12px; padding-bottom: 26px; }
-
-  .masthead h1 {
-    font-size: clamp(26px, 4.4vw, 34px);
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; max-width: 1024px; margin: 56px auto 0; }
+  .kpi { min-width: 0; }
+  .kpi b {
+    display: block;
+    font-size: 68px;
     font-weight: 600;
-    letter-spacing: -0.022em;
-    line-height: 1.15;
-    max-width: 22ch;
+    letter-spacing: -.03em;
+    line-height: 1;
+    margin: 6px 0 10px;
+    background: linear-gradient(90deg, var(--kpi-a), var(--kpi-b) 50%, var(--kpi-c));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-variant-numeric: tabular-nums;
   }
+  .kpi small { display: block; font-size: 17px; color: var(--text-secondary); font-weight: 400; }
+  .kpi span { display: block; margin-top: 6px; color: var(--text-muted); font-size: 14px; }
 
-  .subtitle { max-width: 62ch; color: var(--text-secondary); font-size: 14.5px; }
+  /* --- a chart card -------------------------------------------------------- */
+  .stage { max-width: 980px; margin: 48px auto 0; text-align: left; }
+  .frame {
+    background: var(--card);
+    border-radius: 28px;
+    padding: 36px 44px 30px;
+    box-shadow: var(--frame-ring), var(--frame-shadow);
+  }
+  .chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .chart-heat { max-width: 680px; }
+  .frame .chart-heat { max-width: 100%; }
+  /* Chart ink. Text wears text tokens, never a series colour — the mark beside a
+     label carries the identity, and the only fill a chart text element may name is
+     an `-ink` token, which is a readability choice rather than a series. */
+  .chart .grid { stroke: var(--grid); stroke-width: 1; }
+  .chart .axis { stroke: var(--axis); stroke-width: 1; }
+  .chart .tick { fill: var(--text-muted); font-size: 11px; }
+  .chart .label { fill: var(--text-secondary); font-size: 12px; }
+  .chart .value {
+    fill: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    /* A bar's value is written just outside its data end, which for a long bar
+       falls across a gridline. The stroke paints behind the fill (paint-order), so
+       a surface-coloured stroke punches the label out of the rule it sits on. */
+    stroke: var(--card);
+    stroke-width: 3px;
+    paint-order: stroke fill;
+  }
+  .chart .cell-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chart .mark { cursor: default; transition: opacity .12s; }
+  .chart:hover .mark { opacity: .55; }
+  .chart .mark:hover, .chart .mark:focus-visible { opacity: 1; }
+  .chart .mark:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2px; }
+  /* An absent combination is marked, not left blank: a blank cell is
+     indistinguishable from a rendering bug, and from a zero. */
+  .chart .cell-empty { fill: none; stroke: var(--axis); stroke-dasharray: 3 3; }
 
-  .provenance {
+  .legend {
+    list-style: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 10px 34px;
-    margin: 6px 0 0;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-  }
-  .provenance dt {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  /* A filesystem path is one unbreakable token, and the Source line is where it lands.
-     Left alone it is wider than the page on a phone and takes the whole layout with it. */
-  .provenance dd { margin: 2px 0 0; font-size: 13.5px; overflow-wrap: anywhere; }
-
-  /* --- the overview block -------------------------------------------------- */
-  .overview {
-    display: grid;
-    gap: 22px;
-    padding: 22px clamp(16px, 3vw, 26px);
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-  }
-  @media (min-width: 760px) {
-    .overview { grid-template-columns: minmax(190px, 260px) minmax(0, 1fr); gap: 34px; }
-  }
-
-  .hero-value {
-    font-size: clamp(44px, 9vw, 60px);
-    font-weight: 600;
-    letter-spacing: -0.035em;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .hero-label { margin-top: 8px; font-size: 13.5px; color: var(--text-secondary); }
-  .hero-note {
-    margin-top: 2px;
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--text-muted);
-  }
-
-  .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-    gap: 18px 20px;
-    margin: 0;
-  }
-  .tile { display: grid; gap: 5px; align-content: start; }
-  .tile dt {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .tile dd {
-    margin: 0;
-    font-size: 25px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .tile .of { font-size: 15px; font-weight: 500; color: var(--text-muted); }
-
-  /* --- data basis ---------------------------------------------------------- */
-  .basis { display: grid; gap: 12px; }
-  .basis-head { display: grid; gap: 6px; }
-  .basis h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
-  .headline { font-size: 14.5px; }
-  .note { max-width: 68ch; font-size: 13.5px; color: var(--text-secondary); }
-
-  details { display: grid; gap: 12px; }
-  summary {
-    cursor: pointer;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    gap: 6px 18px;
+    padding: 0;
+    margin: 0 0 18px;
+    font-size: 13px;
     color: var(--text-secondary);
-    padding: 7px 0;
-    width: fit-content;
   }
-  summary:hover { color: var(--text-primary); }
-  summary::marker { color: var(--text-muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .legend li { display: flex; align-items: center; }
 
-  /* --- an analysis --------------------------------------------------------- */
-  .analysis { display: grid; gap: 14px; }
-  .analysis + .analysis { border-top: 1px solid var(--border); padding-top: 36px; }
-  .analysis-head { display: grid; gap: 6px; }
-  .analysis h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.014em; }
-
-  .takeaway { max-width: 68ch; font-size: 15px; line-height: 1.5; }
-
-  figure {
-    display: grid;
-    gap: 12px;
-    margin: 4px 0 0;
-    padding: 18px clamp(12px, 3vw, 20px) 14px;
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+  /* --- the insight under a chart ------------------------------------------- */
+  .insight {
+    margin: 30px auto 0;
+    max-width: 720px;
+    font-size: 19px;
+    line-height: 1.42;
+    color: var(--text-secondary);
+    text-align: center;
   }
-  figcaption {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    max-width: 78ch;
-  }
-
-  /* --- charts --------------------------------------------------------------
-     The chart names a palette slot; the value of that slot is decided here. */
-  .chart {
-    display: block;
-    width: 100%;
-    max-width: 700px;
-    height: auto;
-    margin-inline: auto;
-  }
-  .mark { stroke: none; }
-  .cell { stroke: none; }
-  .cell-empty { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
-  .gridline { stroke-width: 1; }
-
-  .axis-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-muted); }
-  .legend-label { font-family: var(--mono); font-size: 11px; font-weight: 500; fill: var(--text-secondary); }
-  /* A bar's value is written just outside its data end, which for a long bar falls
-     across a gridline. The stroke paints behind the fill (paint-order), so a
-     surface-coloured halo punches the label out of the rule instead of intersecting it. */
-  .value-label {
-    font-family: var(--mono); font-size: 11px; font-weight: 600;
-    fill: var(--text-primary);
-    stroke: var(--surface-1); stroke-width: 3px; paint-order: stroke fill;
-  }
-  /* No fill here: the heatmap writes `var(--seq-N-ink)` on each label, so the ink
-     travels with the step it sits on. */
-  .cell-value { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-
-  .chart [data-tip]:focus-visible {
-    outline: none;
-    stroke: var(--text-primary);
-    stroke-width: 2;
-  }
+  .insight b { color: var(--text-primary); font-weight: 600; }
 
   /* --- tables -------------------------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+  tbody th { color: var(--text-primary); font-size: 14px; letter-spacing: 0; text-transform: none; }
+
+  details { margin: 22px 0 0; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 15px; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary:after { content: " ›"; }
+  details[open] summary:after { content: " ⌄"; }
+  details .scroller { margin-top: 12px; }
+
+  /* Only a table may be wider than the page, and then only inside a box that
+     scrolls by itself — the body must never scroll sideways. */
   .scroller { overflow-x: auto; overscroll-behavior-x: contain; }
 
-  table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  caption { text-align: left; }
-
-  th, td {
-    padding: 7px 16px 7px 0;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  thead th {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    border-bottom-color: var(--axis);
-  }
-  thead th + th { text-align: right; }
-  tbody th { font-weight: 500; text-align: left; }
-  tbody td {
-    text-align: right;
-    font-family: var(--mono);
-    font-variant-numeric: tabular-nums;
-  }
-  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
-
-  /* --- colophon ------------------------------------------------------------ */
-  .colophon {
+  /* --- the two grey tiles -------------------------------------------------- */
+  .grid2 {
     display: grid;
-    gap: 12px;
-    margin-top: 4px;
-    padding-top: 26px;
-    border-top: 1px solid var(--border);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    max-width: 1024px;
+    margin: 56px auto 0;
+    text-align: left;
+    padding: 0 22px;
   }
-  .colophon ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
-  .colophon li { max-width: 74ch; font-size: 13px; color: var(--text-secondary); }
-  .fineprint {
-    font-size: 12px; color: var(--text-muted); max-width: 74ch;
-    overflow-wrap: anywhere;  /* the source path again, this time in prose */
+  .tile { background: var(--tile); border-radius: 28px; padding: 36px 36px 30px; min-width: 0; }
+  .tile h3 { margin: 0 0 6px; font-size: 26px; font-weight: 600; }
+  .tile p { margin: 0 0 20px; color: var(--text-secondary); font-size: 16px; line-height: 1.4; }
+  .tile table { font-size: 13px; }
+  .tile th, .tile td { padding: 8px 6px; }
+  .tile ul { margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 15px; line-height: 1.5; }
+  .tile li + li { margin-top: 10px; }
+  .tile li b { color: var(--text-primary); font-weight: 600; }
+
+  footer {
+    margin-top: 96px;
+    padding: 36px 22px calc(36px + env(safe-area-inset-bottom, 0px));
+    background: var(--tile);
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    /* A filesystem path is one unbreakable token. Left alone it is wider than a
+       phone and takes the whole layout with it. */
+    overflow-wrap: anywhere;
   }
 
   /* --- the hover layer ----------------------------------------------------- */
-  .tip {
+  .tooltip {
     position: fixed;
-    top: 0;
     left: 0;
+    top: 0;
     z-index: 20;
     max-width: min(300px, 78vw);
-    padding: 8px 10px;
-    border-radius: 7px;
-    background: var(--text-primary);
-    color: var(--plane);
-    font-family: var(--mono);
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: var(--tip-bg);
+    color: var(--tip-fg);
     font-size: 12px;
     font-weight: 500;
     line-height: 1.45;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity .1s;
   }
+  .tooltip[data-shown] { opacity: 1; }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
   }
+
+  /* A chart is drawn in a 720-unit viewBox. Scaled to a phone it would render its
+     11px tick numbers at under 5px, which is not text any more — so below this width
+     the chart keeps a legible minimum and its own card scrolls, rather than shrinking
+     into illegibility. Only the chart scrolls: nothing else on the page moves
+     sideways, and the legend and the table view stay where they are. */
+  @media (max-width: 640px) {
+    .frame .scroller .chart { min-width: 620px; }
+  }
+
+  @media (max-width: 900px) {
+    .sec h1 { font-size: 52px; }
+    .sec h2 { font-size: 38px; }
+    .sec .tag { font-size: 20px; }
+    .hero .tag { font-size: 20px; }
+  }
+  @media (max-width: 820px) {
+    .sec { padding: 76px 22px 68px; }
+    .frame { padding: 22px; border-radius: 20px; }
+    .tile { padding: 26px; border-radius: 20px; }
+    .grid2 { grid-template-columns: minmax(0, 1fr); }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+    .kpi b { font-size: 52px; }
+    .nav ul { gap: 18px; font-size: 11px; }
+  }
 </style>
 
-<div class="page">
-  <header class="masthead">
-    <p class="eyebrow">Field force analytics</p>
-    <h1>Multichannel engagement</h1>
-    <p class="subtitle">
-      How the field force reached health care professionals this period: the volume
-      behind each channel, how activity moved month to month, and where engagement
-      actually landed once the channel was chosen.
-    </p>
-    <dl class="provenance">
-      <div><dt>Period</dt><dd>{{PERIOD_LABEL}}</dd></div>
-      <div><dt>Source</dt><dd class="mono">{{SOURCE_FILE}}</dd></div>
-      <div><dt>Generated</dt><dd>{{GENERATED_AT}}</dd></div>
-    </dl>
-  </header>
+<nav class="nav">
+  <ul>
+    <li>Multichannel</li>
+    <li><a href="#channels">Channel mix</a></li>
+    <li><a href="#trend">Trend</a></li>
+    <li><a href="#specialties">Specialties</a></li>
+    <li><a href="#data">Data</a></li>
+  </ul>
+</nav>
 
-  <main>
-    <section class="overview" aria-label="Headline figures">
-      <div>
-        <p class="hero-value">{{KPI_INTERACTIONS}}</p>
-        <p class="hero-label">interactions analysed</p>
-        <p class="hero-note">{{PERIOD_LABEL}}</p>
-      </div>
-      <dl class="tiles">
-        <div class="tile">
-          <dt>HCPs reached</dt>
-          <dd>{{KPI_HCPS}}</dd>
-        </div>
-        <div class="tile">
-          <dt>Mean engagement</dt>
-          <dd>{{KPI_AVG_ENGAGEMENT}}</dd>
-        </div>
-        <div class="tile">
-          <dt>Channels in use</dt>
-          <dd>{{KPI_CHANNELS_USED}}<span class="of"> / {{CHANNEL_TOTAL}}</span></dd>
-        </div>
-        <div class="tile">
-          <dt>Email open rate</dt>
-          <dd>{{KPI_EMAIL_OPEN_RATE}}</dd>
-        </div>
-      </dl>
-    </section>
+<section class="sec hero">
+  <p class="kicker">Multichannel engagement · {{PERIOD_LABEL}}</p>
+  <h1>Every channel.<br>One picture.</h1>
+  <p class="tag">{{HERO_TAGLINE}}</p>
+  <div class="cta">
+    <a class="pri" href="#channels">Read the analysis</a>
+    <a class="ghost" href="#data">Data basis ›</a>
+  </div>
+</section>
 
-    <section class="basis" aria-labelledby="basis-h">
-      <div class="basis-head">
-        <p class="eyebrow">Data basis</p>
-        <h2 id="basis-h">What the cleaning pipeline did</h2>
-      </div>
-      <p class="headline">{{QUALITY_HEADLINE}}</p>
-      <p class="note">{{MISSING_SCORE_NOTE}}</p>
-      <details>
-        <summary>Cleaning ledger — every stage and the rows it touched</summary>
-        <div class="scroller">{{{QUALITY_TABLE}}}</div>
-      </details>
-    </section>
+<section class="sec band" aria-label="Headline figures">
+  <h2>The numbers.</h2>
+  <p class="tag">The period in four figures.</p>
+  <div class="kpis">
+    <div class="kpi">
+      <b>{{KPI_INTERACTIONS}}</b>
+      <small>Interactions</small>
+      <span>{{KPI_INTERACTIONS_NOTE}}</span>
+    </div>
+    <div class="kpi">
+      <b>{{KPI_HCPS}}</b>
+      <small>HCPs reached</small>
+      <span>{{KPI_HCPS_NOTE}}</span>
+    </div>
+    <div class="kpi">
+      <b>{{KPI_AVG_ENGAGEMENT}}</b>
+      <small>Mean engagement</small>
+      <span>Score 0–100</span>
+    </div>
+    <div class="kpi">
+      <b>{{KPI_EMAIL_OPEN_RATE}}</b>
+      <small>Email open rate</small>
+      <span>{{KPI_EMAIL_OPEN_RATE_NOTE}}</span>
+    </div>
+  </div>
+</section>
 
-    <section class="analysis" aria-labelledby="channel-h">
-      <div class="analysis-head">
-        <p class="eyebrow">Channel</p>
-        <h2 id="channel-h">Volume and engagement by channel</h2>
-      </div>
-      <p class="takeaway">{{CHANNEL_TAKEAWAY}}</p>
-      <figure>
-        <div>{{{CHANNEL_CHART}}}</div>
-        <figcaption>{{CHANNEL_CAPTION}}</figcaption>
-      </figure>
-      <details open>
-        <summary>Table view — volume, share, reach and mean engagement</summary>
-        <div class="scroller">{{{CHANNEL_TABLE}}}</div>
-      </details>
-    </section>
+<section class="sec" id="channels" aria-labelledby="channels-h">
+  <h2 id="channels-h">Channel mix.</h2>
+  <p class="tag">Which channel carried the volume — and which one actually landed.</p>
+  <div class="stage">
+    <div class="frame"><div class="scroller">{{{CHANNEL_CHART}}}</div></div>
+  </div>
+  <p class="insight">{{{CHANNEL_TAKEAWAY}}}</p>
+  <details>
+    <summary>Table view — volume, share, reach and mean engagement</summary>
+    <div class="scroller">{{{CHANNEL_TABLE}}}</div>
+  </details>
+</section>
 
-    <section class="analysis" aria-labelledby="trend-h">
-      <div class="analysis-head">
-        <p class="eyebrow">Trend</p>
-        <h2 id="trend-h">How activity moved through the period</h2>
-      </div>
-      <p class="takeaway">{{TREND_TAKEAWAY}}</p>
-      <figure>
-        <div>{{{TREND_CHART}}}</div>
-        <figcaption>{{TREND_CAPTION}}</figcaption>
-      </figure>
-      <details open>
-        <summary>Table view — interactions per month, by channel</summary>
-        <div class="scroller">{{{TREND_TABLE}}}</div>
-      </details>
-    </section>
+<section class="sec band" id="trend" aria-labelledby="trend-h">
+  <h2 id="trend-h">The trend.</h2>
+  <p class="tag">How the mix moved, one stack per month.</p>
+  <div class="stage">
+    <div class="frame">
+      {{{TREND_LEGEND}}}
+      <div class="scroller">{{{TREND_CHART}}}</div>
+    </div>
+  </div>
+  <p class="insight">{{{TREND_TAKEAWAY}}}</p>
+  <details>
+    <summary>Table view — interactions per month, by channel</summary>
+    <div class="scroller">{{{TREND_TABLE}}}</div>
+  </details>
+</section>
 
-    <section class="analysis" aria-labelledby="specialty-h">
-      <div class="analysis-head">
-        <p class="eyebrow">Specialty</p>
-        <h2 id="specialty-h">Where engagement landed, by specialty</h2>
-      </div>
-      <p class="takeaway">{{SPECIALTY_TAKEAWAY}}</p>
-      <figure>
-        <div>{{{SPECIALTY_CHART}}}</div>
-        <figcaption>{{SPECIALTY_CAPTION}}</figcaption>
-      </figure>
-      <details open>
-        <summary>Table view — mean engagement per specialty and channel</summary>
-        <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
-      </details>
-    </section>
+<section class="sec" id="specialties" aria-labelledby="specialties-h">
+  <h2 id="specialties-h">By specialty.</h2>
+  <p class="tag">Whether the specialty or the channel explains engagement.</p>
+  <div class="stage">
+    <div class="frame"><div class="scroller">{{{SPECIALTY_CHART}}}</div></div>
+  </div>
+  <p class="insight">{{{SPECIALTY_TAKEAWAY}}}</p>
+  <details>
+    <summary>Table view — mean engagement per specialty and channel</summary>
+    <div class="scroller">{{{SPECIALTY_TABLE}}}</div>
+  </details>
+</section>
 
-    <footer class="colophon">
-      <p class="eyebrow">Conventions</p>
-      <ul>
-        <li>
-          A row is one interaction. Only rows that survived cleaning are counted, and
-          the ledger above accounts for every row that did not.
-        </li>
-        <li>
-          A missing engagement score is excluded from every average and is never read
-          as a zero. Nothing is imputed and no value is invented.
-        </li>
-        <li>
-          Dates are read day-first. A numeric date whose first field is above 12 is
-          treated as month-first, because that reading is the only unambiguous one.
-        </li>
-        <li>
-          Colour carries channel identity, so a channel keeps its hue when it changes
-          rank between periods. Each chart also carries its values as text — on the
-          marks where they fit, and in the table view beneath every chart.
-        </li>
-      </ul>
-      <p class="fineprint">
-        Generated by <span class="mono">agenticcoding report</span> from
-        <span class="mono">{{SOURCE_FILE}}</span> on {{GENERATED_AT}}. The page is
-        self-contained: it makes no network requests and can be read offline.
-      </p>
-    </footer>
-  </main>
+<div class="grid2">
+  <div class="tile" id="data">
+    <h3>Data basis</h3>
+    <p>{{QUALITY_HEADLINE}}</p>
+    <div class="scroller">{{{QUALITY_TABLE}}}</div>
+  </div>
+  <div class="tile">
+    <h3>How to read this</h3>
+    <ul>
+      <li>
+        <b>One row is one interaction.</b> Only rows that survived cleaning are
+        counted, and the ledger beside this accounts for every row that did not.
+      </li>
+      <li>
+        <b>A missing score is not a zero.</b> Those rows count toward the volume and
+        are excluded from every average. Nothing is imputed and no value is invented.
+      </li>
+      <li>
+        <b>Dates are read day-first.</b> A numeric date whose first field is above 12
+        is read month-first, because that reading is the only unambiguous one.
+      </li>
+      <li>
+        <b>Colour is identity, not rank.</b> A channel keeps its hue when it changes
+        place between periods, and every chart carries its values as text — in the
+        table view beneath it, and on the marks where they fit.
+      </li>
+    </ul>
+  </div>
 </div>
 
-<script>
-  /* The hover layer. A chart is readable without it — every value it encodes is
-     also written into the table view — so this only adds the fast path.
+<footer>
+  Generated from <span style="color:var(--text-secondary)">{{SOURCE_FILE}}</span> on
+  {{GENERATED_AT}} · {{MISSING_SCORE_NOTE}} · The page is self-contained: it makes no
+  network requests and can be read offline.
+</footer>
 
-     `textContent`, never `innerHTML`: the tooltip text carries channel and
-     specialty labels that came out of a CSV export. */
+<script>
+  /* The hover layer. A chart is readable without it — every value it encodes is also
+     written into the table view beneath it — so this only adds the fast path.
+
+     `textContent`, never `innerHTML`: the tooltip text carries channel and specialty
+     labels that came out of a CSV export. */
   (function () {
     var tip = document.createElement("div");
-    tip.className = "tip";
-    tip.hidden = true;
+    tip.className = "tooltip";
     document.body.appendChild(tip);
 
     function place(target) {
       var text = target.getAttribute("data-tip");
       if (!text) return;
       tip.textContent = text;
-      tip.hidden = false;
+      tip.setAttribute("data-shown", "");
 
       var box = target.getBoundingClientRect();
       var size = tip.getBoundingClientRect();
       var left = box.left + box.width / 2 - size.width / 2;
       left = Math.max(8, Math.min(left, window.innerWidth - size.width - 8));
-      var top = box.top - size.height - 10;
-      if (top < 8) top = box.bottom + 10;
+      var top = box.top - size.height - 12;
+      if (top < 8) top = box.bottom + 12;
       tip.style.transform =
         "translate(" + Math.round(left) + "px, " + Math.round(top) + "px)";
     }
 
     function hide() {
-      tip.hidden = true;
+      tip.removeAttribute("data-shown");
     }
 
     var marks = document.querySelectorAll("[data-tip]");

@@ -8,6 +8,7 @@ would not notice that `report` never reads what `generate` wrote.
 
 import csv
 import datetime as dt
+import re
 import subprocess
 import sys
 
@@ -86,14 +87,23 @@ def test_report_pages_the_generated_csv_without_network_references(tmp_path, raw
 
 
 def test_report_carries_the_cleaned_row_count_into_the_page(tmp_path, raw_csv):
-    """The headline figure must be the number of rows that survived cleaning."""
+    """The headline figure must be the number of rows that survived cleaning.
+
+    Read back off the words in the page rather than off a class: a class name is the
+    designer's to change, and a test that pins one turns every design swap into a
+    suite of false failures. Whichever way the figure is styled, it is the number
+    printed as the *Interactions* figure, so that is what this reads.
+    """
     from agenticcoding import clean
 
     out = tmp_path / "report.html"
     cli.main(["report", "--input", raw_csv, "--out", str(out), "--as-of", "2026-09-18"])
 
-    kept, _ = clean.clean_rows(clean.read_csv(raw_csv), as_of=AS_OF)
-    assert f'<p class="hero-value">{len(kept)}</p>' in out.read_text(encoding="utf-8")
+    kept, quality = clean.clean_rows(clean.read_csv(raw_csv), as_of=AS_OF)
+    assert len(kept) < quality.rows_in, "the fixture must lose rows, or the check proves nothing"
+
+    text = re.sub(r"<[^>]+>", " ", out.read_text(encoding="utf-8"))
+    assert re.search(rf"\b{len(kept)}\b[\s\S]{{0,80}}?Interactions", text), text[:400]
 
 
 def test_report_does_not_write_the_cleaned_csv_unless_asked(tmp_path, raw_csv):

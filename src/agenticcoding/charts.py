@@ -38,7 +38,6 @@ BAR_HEIGHT = 22
 ROW_GAP = 14
 
 AXIS_BAND = 28
-LEGEND_BAND = 26
 
 # The surface gap between two stacked segments and between adjacent bars. Without it
 # two touching fills read as one block and the stack's parts become uncountable.
@@ -71,35 +70,30 @@ def _short(channel: str) -> str:
     return schema.CHANNEL_SHORT.get(channel, channel)
 
 
-def _legend(entries: list[tuple[str, str]], *, y: float) -> str:
-    """A horizontal legend: a coloured swatch, then the label in ordinary text ink.
-
-    Identity comes from the mark beside the label, never from the label's own colour.
-    """
-    if not entries:
-        return ""
-    item = WIDTH / len(entries)
-    parts: list[str] = []
-    for index, (label, token) in enumerate(entries):
-        left = index * item
-        parts.append(
-            svgcore.element(
-                "rect", x=left, y=y - 9, width=10, height=10, rx=2,
-                style=svgcore.paint(token),
-            )
-        )
-        parts.append(
-            svgcore.element("text", label, cls="legend-label", x=left + 16, y=y)
-        )
-    return "".join(parts)
-
-
 def _gridline(x1: float, y1: float, x2: float, y2: float) -> str:
-    """A hairline rule. Solid, never dashed — dashes read as 'projected' or 'missing'."""
-    return svgcore.element(
-        "line", cls="gridline", x1=x1, y1=y1, x2=x2, y2=y2,
-        style=svgcore.paint("grid", "stroke"),
+    """A hairline rule. Solid, never dashed — dashes read as 'projected' or 'missing'.
+
+    The stroke comes from the template's `.chart .grid` rule rather than from here:
+    a rule's colour is part of the theme, and the theme is the designer's file.
+    """
+    return svgcore.element("line", cls="grid", x1=x1, y1=y1, x2=x2, y2=y2)
+
+
+def trend_legend(trend: metrics.MonthlyTrend) -> str:
+    """The channel legend, as HTML — a wrapping list above the chart.
+
+    HTML rather than an SVG `<text>` run because a legend is a list of things that
+    must reflow on a phone, and reflow is what a browser already does. The swatch is
+    the channel's own slot, so a colour swap is still a template edit.
+    """
+    if not trend.channels:
+        return ""
+    items = "".join(
+        f'<li><i style="background:var(--{channel_token(channel)})"></i>'
+        f"{svgcore.esc(_short(channel))}</li>"
+        for channel in trend.channels
     )
+    return f'<ul class="legend">{items}</ul>'
 
 
 # --- 1. channel mix: ranked horizontal bars -----------------------------------
@@ -129,7 +123,7 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
         parts.append(_gridline(x, PLOT_TOP, x, plot_bottom))
         parts.append(
             svgcore.element(
-                "text", svgcore.fmt(tick), cls="axis-label",
+                "text", svgcore.fmt(tick), cls="tick",
                 x=x, y=plot_bottom + 17, **{"text-anchor": "middle"},
             )
         )
@@ -156,7 +150,7 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
         )
         parts.append(
             svgcore.element(
-                "text", _short(row.channel), cls="axis-label",
+                "text", _short(row.channel), cls="label",
                 x=LABEL_GUTTER - 10, y=y + BAR_HEIGHT / 2 + 4,
                 **{"text-anchor": "end"},
             )
@@ -164,7 +158,7 @@ def channel_bars(mix: metrics.ChannelMix) -> str:
         parts.append(
             svgcore.element(
                 "text", f"{row.interactions} · {svgcore.share(row.share)}",
-                cls="value-label", x=LABEL_GUTTER + width + 8, y=y + BAR_HEIGHT / 2 + 4,
+                cls="value", x=LABEL_GUTTER + width + 8, y=y + BAR_HEIGHT / 2 + 4,
             )
         )
 
@@ -204,7 +198,7 @@ def monthly_columns(trend: metrics.MonthlyTrend) -> str:
         parts.append(_gridline(LABEL_GUTTER, y, LABEL_GUTTER + PLOT_WIDTH, y))
         parts.append(
             svgcore.element(
-                "text", svgcore.fmt(tick), cls="axis-label",
+                "text", svgcore.fmt(tick), cls="tick",
                 x=LABEL_GUTTER - 10, y=y + 4, **{"text-anchor": "end"},
             )
         )
@@ -240,19 +234,12 @@ def monthly_columns(trend: metrics.MonthlyTrend) -> str:
 
         parts.append(
             svgcore.element(
-                "text", month.label, cls="axis-label",
+                "text", month.label, cls="label",
                 x=centre, y=plot_bottom + 17, **{"text-anchor": "middle"},
             )
         )
 
-    parts.append(
-        _legend(
-            [(_short(channel), channel_token(channel)) for channel in trend.channels],
-            y=plot_bottom + AXIS_BAND + 14,
-        )
-    )
-
-    return _svg("".join(parts), plot_bottom + AXIS_BAND + LEGEND_BAND)
+    return _svg("".join(parts), plot_bottom + AXIS_BAND)
 
 
 # --- 3. specialty matrix: heatmap ---------------------------------------------
@@ -281,7 +268,7 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
         y = PLOT_TOP + row_index * cell_height
         parts.append(
             svgcore.element(
-                "text", row.specialty, cls="axis-label",
+                "text", row.specialty, cls="label",
                 x=gutter - 12, y=y + cell_height / 2 + 4, **{"text-anchor": "end"},
             )
         )
@@ -331,7 +318,7 @@ def specialty_heatmap(matrix: metrics.SpecialtyMatrix) -> str:
     for column_index, channel in enumerate(matrix.channels):
         parts.append(
             svgcore.element(
-                "text", _short(channel), cls="axis-label",
+                "text", _short(channel), cls="label",
                 x=gutter + (column_index + 0.5) * cell_width,
                 y=plot_bottom + 17, **{"text-anchor": "middle"},
             )

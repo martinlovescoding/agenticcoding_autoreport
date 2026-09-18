@@ -79,9 +79,11 @@ def test_kpi_avg_engagement_ignores_the_missing_score(slots):
     assert slots["KPI_AVG_ENGAGEMENT"] == "50"
 
 
-def test_kpi_channels_used_counts_channels_present_not_canonical(slots):
-    assert slots["KPI_CHANNELS_USED"] == "3"
-    assert slots["CHANNEL_TOTAL"] == str(len(schema.CHANNELS))
+def test_every_kpi_note_says_where_its_number_came_from(slots):
+    """A headline figure without its denominator is a figure a reader cannot check."""
+    assert slots["KPI_INTERACTIONS_NOTE"] == "from 8 raw rows"
+    assert slots["KPI_HCPS_NOTE"] == "2 interactions per HCP"
+    assert slots["KPI_EMAIL_OPEN_RATE_NOTE"] == "50 % of opens clicked"
 
 
 def test_kpi_email_open_rate_is_a_percentage(slots):
@@ -138,9 +140,17 @@ def test_missing_score_note_names_how_many_rows_it_affects(slots):
 # --- the analyses -------------------------------------------------------------
 
 
-def test_channel_slots_carry_a_takeaway_a_caption_a_chart_and_a_table(slots):
+def test_hero_tagline_leads_with_the_two_numbers_the_page_is_about(slots):
+    """"Cleaned and analysed" is a claim; the counts are what make it checkable."""
+    tagline = slots["HERO_TAGLINE"]
+
+    assert "8 interactions" in tagline
+    assert "4 health care professionals" in tagline
+    assert "March – May 2026" in tagline
+
+
+def test_channel_slots_carry_a_takeaway_a_chart_and_a_table(slots):
     assert "F2F Call" in slots["CHANNEL_TAKEAWAY"]
-    assert slots["CHANNEL_CAPTION"] == "Interactions per channel, March – May 2026."
     assert slots["CHANNEL_CHART"].startswith("<svg")
     assert slots["CHANNEL_TABLE"].startswith("<table")
 
@@ -165,8 +175,8 @@ def test_channel_takeaway_credits_the_best_engaged_channel_by_name():
 
     sentence = built["CHANNEL_TAKEAWAY"]
 
-    assert "F2F Call carries the most activity" in sentence
-    assert "Event posts the highest average engagement" in sentence
+    assert "<b>F2F Call</b> carries the most activity" in sentence
+    assert "<b>Event</b> posts the highest average engagement" in sentence
     assert "90" in sentence
 
 
@@ -174,13 +184,13 @@ def test_channel_takeaway_does_not_repeat_the_name_it_already_gave(slots):
     """When one channel is both, naming it twice reads as two channels."""
     sentence = slots["CHANNEL_TAKEAWAY"]
 
-    assert "F2F Call carries the most activity" in sentence
+    assert "<b>F2F Call</b> carries the most activity" in sentence
     assert "and posts the highest average engagement" in sentence
     assert sentence.count("F2F Call") == 1
 
 
-def test_trend_slots_carry_a_takeaway_a_caption_a_chart_and_a_table(slots):
-    assert slots["TREND_CAPTION"] == "Interactions per month, stacked by channel, March – May 2026."
+def test_trend_slots_carry_a_legend_a_takeaway_a_chart_and_a_table(slots):
+    assert slots["TREND_LEGEND"].startswith('<ul class="legend">')
     assert slots["TREND_CHART"].startswith("<svg")
     assert slots["TREND_TABLE"].startswith("<table")
 
@@ -192,13 +202,33 @@ def test_trend_table_has_a_row_per_month_and_a_column_per_channel(slots):
     assert "F2F Call" in table
 
 
-def test_specialty_slots_carry_a_takeaway_a_caption_a_chart_and_a_table(slots):
+def test_specialty_slots_carry_a_takeaway_a_chart_and_a_table(slots):
     assert "Oncology" in slots["SPECIALTY_TAKEAWAY"]
-    assert slots["SPECIALTY_CAPTION"] == (
-        "Mean engagement score per specialty and channel, March – May 2026."
-    )
     assert slots["SPECIALTY_CHART"].startswith("<svg")
     assert slots["SPECIALTY_TABLE"].startswith("<table")
+
+
+def test_a_takeaway_emphasises_the_values_it_names(slots):
+    """The design sets the sentence in grey and the number it turns on in ink.
+
+    That emphasis is markup, so the slot is raw — and a raw slot is a promise that
+    nothing inside it came from the CSV unescaped.
+    """
+    assert "<b>" in slots["CHANNEL_TAKEAWAY"]
+    assert "<b>" in slots["SPECIALTY_TAKEAWAY"]
+    assert "<b>" in slots["TREND_TAKEAWAY"]
+
+
+def test_a_hostile_specialty_label_cannot_become_markup_in_a_takeaway():
+    """The takeaway is substituted raw, so it escapes for itself."""
+    rows = [
+        interaction(specialty='<img src=x onerror="alert(1)">', engagement_score=70.0),
+        interaction(interaction_id="I2", specialty="Oncology", engagement_score=30.0),
+    ]
+    built = report.build_slots(rows, quality(2, 2), source_file="x.csv", generated_at="now")
+
+    assert "<img" not in built["SPECIALTY_TAKEAWAY"]
+    assert "&lt;img" in built["SPECIALTY_TAKEAWAY"]
 
 
 def test_specialty_table_marks_a_combination_with_no_data(slots):
