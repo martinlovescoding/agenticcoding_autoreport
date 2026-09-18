@@ -201,9 +201,18 @@ at all.
   chart sits in a white card lifted over the green panel rather than on the panel itself:
   drawn on the green ground it would paint its labels in `--text-secondary` and its line in
   `--seq-6`, and both are dark on dark.
-- **The delivered design's wordmark and logo are replaced by a neutral title block.** A
-  generated report should not present itself as a document issued by a company it has no
-  relationship with.
+- **The header mark is the delivered design's own, drawn inline — it is not a corporate
+  logo.** The delivered page's top-left corner holds a generic 40×40 glyph, a circle with
+  four bars, beside the words *Multichannel Engagement*; the page here draws that same
+  glyph, with `stroke="currentColor"` rather than the delivered `stroke="#fff"` so it
+  follows the panel's ink instead of hard-coding a colour the panel may change. It is
+  *drawn* rather than loaded because the report makes no network request: a mark that
+  lived at a URL would arrive as a hole. A generated report carries no company's logo —
+  it would read as a document issued by a company it has no relationship with.
+- **The delivered design's typefaces do not come across.** Its stacks open with
+  `"Boehringer Headline"` and `"Boehringer Text"`, proprietary faces this page cannot
+  ship — it loads no web font, by design, because the page is one offline file — so it
+  falls back to the system stack. Headings are where the difference shows.
 - `03/04/2026` is read as 3 April. The convention is documented here rather than inferred
   per file; an export that means 4 March must be converted before it reaches this tool.
 - The page is a snapshot. Filters, drill-down and cross-chart selection are out of scope.

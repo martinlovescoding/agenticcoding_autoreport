@@ -175,10 +175,16 @@
     gap: 20px;
     min-height: 66px;
   }
-  /* A neutral title block. The delivered design carries a corporate wordmark and
-     logo here; a generated report should not present itself as a document issued
-     by a company it has no relationship with. */
-  .brand { margin-right: auto; min-width: 0; }
+  /* The delivered design's top-left mark, beside the title. It is decorative —
+     the text next to it carries the name — so it is hidden from assistive tech
+     rather than announced as an unlabelled graphic, and it strokes in
+     `currentColor` rather than the delivered `stroke="#fff"` so it follows the
+     panel's ink instead of hard-coding a colour the panel may change.
+     It is drawn, not loaded: the report makes no network request, so a mark that
+     lived at a URL would arrive as a hole. */
+  .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+  .brand .brand-mark { flex: none; width: 40px; height: 40px; }
+  .brand .words { min-width: 0; }
   .brand b { display: block; font-size: 16px; font-weight: 600; line-height: 1.2; }
   .brand span { display: block; font-size: 13px; color: var(--sage); }
   .links {
@@ -479,8 +485,15 @@
 <header class="nav panel">
   <div class="wrap bar">
     <div class="brand">
-      <b>Multichannel Engagement</b>
-      <span>{{PERIOD_LABEL}}</span>
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none" stroke="currentColor"
+           stroke-width="2" aria-hidden="true" focusable="false">
+        <circle cx="20" cy="20" r="18"/>
+        <path d="M12 30V14M17 30V10M22 30V13M27 30V17" stroke-linecap="round"/>
+      </svg>
+      <div class="words">
+        <b>Multichannel Engagement</b>
+        <span>{{PERIOD_LABEL}}</span>
+      </div>
     </div>
     <nav aria-label="Sections">
       <ul class="links">

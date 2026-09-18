@@ -274,6 +274,7 @@ not finished until it is counted:
 | Decision | Rationale |
 |---|---|
 | **Hand-built SVG, no chart library** | The offline guarantee is a feature, not an accident. It also means the chart's ink is checked against the template's CSS, which no library would allow. |
+| **The header mark is drawn inline, not loaded** | The same guarantee: a mark referenced by URL — even the delivered design's own asset path — is a hole on a machine with no network, and the report is read from a USB stick as often as from a server. |
 | **Tokens, never literal colours, in the charts** | It is the mechanism of the design handoff. It also makes the palette *computable* from the template's own text — invariant 6 is a computed WCAG ratio, not a review comment. |
 | **The template is a fragment** (no `<!doctype>`, `<html>`, `<head>`, `<body>`) | It is the form the artifact host expects and the form a designer hands over. The page shell is boilerplate, so `report.document()` adds it. |
 | **Statics live in the template; the view model emits strings, never markup** | The split is what makes the design a template edit. The three exceptions — takeaways, table twins, the shell — are prose *about this dataset* or boilerplate, and are documented as such in `report.py`. |
@@ -307,5 +308,5 @@ not finished until it is counted:
 The README carries the reader-facing ones, with the reasoning: the channel palette
 failing three of the validator's checks and why that is permitted, the seven-step
 approximation of a continuous range and its two palest steps, the phone chart floor and
-its scroll trade-off, the hero card, the replaced wordmark, and the `03/04/2026`
-convention.
+its scroll trade-off, the hero card, the header mark that is drawn inline rather than
+loaded, the corporate typefaces that cannot come across, and the `03/04/2026` convention.
