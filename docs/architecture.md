@@ -274,7 +274,7 @@ not finished until it is counted:
 | Decision | Rationale |
 |---|---|
 | **Hand-built SVG, no chart library** | The offline guarantee is a feature, not an accident. It also means the chart's ink is checked against the template's CSS, which no library would allow. |
-| **The header mark is drawn inline, not loaded** | The same guarantee: a mark referenced by URL — even the delivered design's own asset path — is a hole on a machine with no network, and the report is read from a USB stick as often as from a server. |
+| **The header mark is inlined, not loaded** | The same guarantee: a mark referenced by URL — even the delivered design's own asset path — is a hole on a machine with no network, and the report is read from a USB stick as often as from a server. The logo's paths come across unaltered; only its wrapper is rebuilt, because an inlined `<style>` and `id` become global in the page they land in. |
 | **Tokens, never literal colours, in the charts** | It is the mechanism of the design handoff. It also makes the palette *computable* from the template's own text — invariant 6 is a computed WCAG ratio, not a review comment. |
 | **The template is a fragment** (no `<!doctype>`, `<html>`, `<head>`, `<body>`) | It is the form the artifact host expects and the form a designer hands over. The page shell is boilerplate, so `report.document()` adds it. |
 | **Statics live in the template; the view model emits strings, never markup** | The split is what makes the design a template edit. The three exceptions — takeaways, table twins, the shell — are prose *about this dataset* or boilerplate, and are documented as such in `report.py`. |

@@ -201,14 +201,18 @@ at all.
   chart sits in a white card lifted over the green panel rather than on the panel itself:
   drawn on the green ground it would paint its labels in `--text-secondary` and its line in
   `--seq-6`, and both are dark on dark.
-- **The header mark is the delivered design's own, drawn inline — it is not a corporate
-  logo.** The delivered page's top-left corner holds a generic 40×40 glyph, a circle with
-  four bars, beside the words *Multichannel Engagement*; the page here draws that same
-  glyph, with `stroke="currentColor"` rather than the delivered `stroke="#fff"` so it
-  follows the panel's ink instead of hard-coding a colour the panel may change. It is
-  *drawn* rather than loaded because the report makes no network request: a mark that
-  lived at a URL would arrive as a hole. A generated report carries no company's logo —
-  it would read as a document issued by a company it has no relationship with.
+- **The header carries Boehringer Ingelheim's primary logo, inlined.** It sits in the
+  top-left corner beside the words *Multichannel Engagement*, where the delivered mock had
+  a generic placeholder glyph. It is inlined rather than loaded because the report makes no
+  network request: a mark referenced by URL arrives as a hole on exactly the machines this
+  page is built for. That is the whole of why the page carries ~7 KB of path data. The
+  source is `html_design/primary-logo-white.svg`; its four paths are unaltered, its
+  `<?xml?>` declaration, `id="Layer_1"` and `<style>` block are dropped — a global class
+  name and a global DOM id in a shared document are collisions waiting to happen — and its
+  `fill: #fff` is `color: currentColor` so the mark follows the panel's ink token.
+- **That logo is a third party's trademark, and it is committed to this public
+  repository.** The page is a design exercise; nothing it renders should be read as a
+  document issued by Boehringer Ingelheim.
 - **The delivered design's typefaces do not come across.** Its stacks open with
   `"Boehringer Headline"` and `"Boehringer Text"`, proprietary faces this page cannot
   ship — it loads no web font, by design, because the page is one offline file — so it
